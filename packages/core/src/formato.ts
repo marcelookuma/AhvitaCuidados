@@ -50,6 +50,25 @@ export function cpf(v: string): string {
   return d.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
 }
 
+/** Mesma regra da API (Valida::cpfValido). */
+export function cpfValido(v: string): boolean {
+  const d = v.replace(/\D/g, '');
+  if (!/^\d{11}$/.test(d) || /^(\d)\1{10}$/.test(d)) return false;
+  for (let t = 9; t < 11; t++) {
+    let soma = 0;
+    for (let i = 0; i < t; i++) soma += Number(d[i]) * (t + 1 - i);
+    if (Number(d[t]) !== ((10 * soma) % 11) % 10) return false;
+  }
+  return true;
+}
+
+/** Celular/telefone brasileiro com DDD (10 ou 11 dígitos, com ou sem +55). Mesma regra da API. */
+export function telefoneValido(v: string): boolean {
+  let d = v.replace(/\D/g, '');
+  if (d.startsWith('55') && d.length >= 12) d = d.slice(2);
+  return d.length === 10 || d.length === 11;
+}
+
 export function primeiroNome(n: string | null | undefined): string {
   return (n ?? '').trim().split(/\s+/)[0] ?? '';
 }

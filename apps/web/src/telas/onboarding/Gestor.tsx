@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ARRANJOS, MODALIDADES, type ConviteCriado, type Pessoa } from '@cuidados/core';
+import { useEffect, useState } from 'react';
+import { ARRANJOS, MODALIDADES, cpfValido, telefoneValido, type ConviteCriado, type Pessoa } from '@cuidados/core';
 import { api } from '../../servicos';
 import { navegar, PERFIL_ATIVO } from '../../rota';
 import { useSessao } from '../../sessao';
@@ -45,8 +45,36 @@ export function OnboardingGestor() {
     setConvite(await api.convidar(pessoa.id, { papel: 'cuidador', nome: conv.nome, telefone: conv.telefone || undefined, modalidade: conv.modalidade, prazo_confirmacao_min: 60 }));
   });
 
+  // Em qual passo fica cada campo (para voltar direto ao campo com problema)
+  const PASSO_DO_CAMPO: Record<string, number> = {
+    nome_completo: 1, apelido: 1, nascimento: 1, sexo: 1, genero: 1, cpf: 1, relacao: 1, arranjo: 2, ficha: 3, contato_tel: 3,
+  };
+  const [errosLocais, setErrosLocais] = useState<Record<string, string>>({});
+  const errosApi = criar.erro?.campos ?? {};
+  const erros: Record<string, string> = { ...errosApi, ...errosLocais };
+
+  // A API recusou algum campo: volta ao passo dele, onde a mensagem aparece embaixo do campo.
+  useEffect(() => {
+    const campos = Object.keys(criar.erro?.campos ?? {}).filter((c) => c !== 'consentimentos');
+    const p = Math.min(...campos.map((c) => PASSO_DO_CAMPO[c] ?? 99));
+    if (p < 99) setPasso(p);
+  }, [criar.erro]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const continuar1 = () => {
+    const e: Record<string, string> = {};
+    if (d.cpf.trim() && !cpfValido(d.cpf)) e.cpf = 'CPF inválido. Confira os números ou deixe em branco.';
+    setErrosLocais(e);
+    criar.setErro(null);
+    if (!Object.keys(e).length) setPasso(2);
+  };
+  const continuar3 = () => {
+    const e: Record<string, string> = {};
+    if (d.contato_tel.trim() && !telefoneValido(d.contato_tel)) e.contato_tel = 'Use o celular com DDD, ex.: 11 98888-7777';
+    setErrosLocais(e);
+    if (!Object.keys(e).length) setPasso(4);
+  };
+
   const terminar = () => { localStorage.setItem(PERFIL_ATIVO, '/g'); navegar(pessoa ? `/g/${pessoa.id}` : '/g', true); };
-  const erros = criar.erro?.campos ?? {};
   const total = comCuidador ? 5 : 4;
 
   return (
@@ -56,22 +84,22 @@ export function OnboardingGestor() {
       </div>
 
       {passo === 1 && (
-        <form className="pilha" onSubmit={(e) => { e.preventDefault(); setPasso(2); }}>
+        <form className="pilha" onSubmit={(e) => { e.preventDefault(); continuar1(); }}>
           <h1>Quem vai receber o cuidado?</h1>
           <Campo rotulo="Nome completo" erro={erros.nome_completo}><input value={d.nome_completo} onChange={mudar('nome_completo')} required /></Campo>
-          <Campo rotulo="Como gosta de ser chamado(a)" ajuda='Ex.: "Dona Alzira", "Seu Joaquim", "Alice"'><input value={d.apelido} onChange={mudar('apelido')} required /></Campo>
+          <Campo rotulo="Como gosta de ser chamado(a)" erro={erros.apelido} ajuda='Ex.: "Dona Alzira", "Seu Joaquim", "Alice"'><input value={d.apelido} onChange={mudar('apelido')} required /></Campo>
           <Campo rotulo="Data de nascimento" erro={erros.nascimento}><input type="date" value={d.nascimento} onChange={mudar('nascimento')} required max={new Date().toISOString().slice(0, 10)} /></Campo>
           <div className="grade-2">
-            <Campo rotulo="Sexo">
+            <Campo rotulo="Sexo" erro={erros.sexo}>
               <select value={d.sexo} onChange={mudar('sexo')} required>
                 <option value="">Escolha</option><option value="feminino">Feminino</option><option value="masculino">Masculino</option>
                 <option value="intersexo">Intersexo</option><option value="nao_informar">Prefiro não informar</option>
               </select>
             </Campo>
-            <Campo rotulo="Gênero" ajuda="Opcional"><input value={d.genero} onChange={mudar('genero')} placeholder="Como se identifica" /></Campo>
+            <Campo rotulo="Gênero" ajuda="Opcional" erro={erros.genero}><input value={d.genero} onChange={mudar('genero')} placeholder="Como se identifica" /></Campo>
           </div>
-          <Campo rotulo="CPF da pessoa cuidada" ajuda="Opcional"><input value={d.cpf} onChange={mudar('cpf')} inputMode="numeric" /></Campo>
-          <Campo rotulo="Sua relação com a pessoa">
+          <Campo rotulo="CPF da pessoa cuidada" ajuda="Opcional" erro={erros.cpf}><input value={d.cpf} onChange={mudar('cpf')} inputMode="numeric" /></Campo>
+          <Campo rotulo="Sua relação com a pessoa" erro={erros.relacao}>
             <select value={d.relacao} onChange={mudar('relacao')}>
               {['Tutor(a)', 'Filho(a)', 'Cônjuge', 'Neto(a)', 'Irmão/Irmã', 'Mãe/Pai', 'Responsável legal', 'Outro'].map((r) => <option key={r}>{r}</option>)}
             </select>
@@ -98,18 +126,20 @@ export function OnboardingGestor() {
       )}
 
       {passo === 3 && (
-        <form className="pilha" onSubmit={(e) => { e.preventDefault(); setPasso(4); }}>
+        <form className="pilha" onSubmit={(e) => { e.preventDefault(); continuar3(); }}>
           <h1>Para uma emergência</h1>
-          <p className="sutil">Aparece na ficha que o(a) cuidador(a) mostra ao socorrista — funciona sem internet.</p>
-          <Campo rotulo="Alergias"><input value={d.alergias} onChange={mudar('alergias')} placeholder="Ex.: dipirona" /></Campo>
-          <Campo rotulo="Doenças ou condições"><input value={d.condicoes} onChange={mudar('condicoes')} /></Campo>
-          <Campo rotulo="Convênio"><input value={d.convenio} onChange={mudar('convenio')} /></Campo>
-          <Campo rotulo="Endereço"><input value={d.endereco} onChange={mudar('endereco')} autoComplete="street-address" /></Campo>
+          <p className="sutil">Tudo aqui é <b>opcional</b>: preencha o que souber agora e complete depois. Aparece na ficha que o(a) cuidador(a) mostra ao socorrista, mesmo sem internet.</p>
+          {erros.ficha && <ErroGeral erro={erros.ficha} />}
+          <Campo rotulo="Alergias" ajuda="Opcional"><input value={d.alergias} onChange={mudar('alergias')} placeholder="Ex.: dipirona" /></Campo>
+          <Campo rotulo="Doenças ou condições" ajuda="Opcional"><input value={d.condicoes} onChange={mudar('condicoes')} /></Campo>
+          <Campo rotulo="Convênio" ajuda="Opcional"><input value={d.convenio} onChange={mudar('convenio')} /></Campo>
+          <Campo rotulo="Endereço" ajuda="Opcional"><input value={d.endereco} onChange={mudar('endereco')} autoComplete="street-address" /></Campo>
           <div className="grade-2">
-            <Campo rotulo="Contato de emergência"><input value={d.contato_nome} onChange={mudar('contato_nome')} placeholder="Nome" /></Campo>
-            <Campo rotulo="Celular"><input value={d.contato_tel} onChange={mudar('contato_tel')} inputMode="tel" /></Campo>
+            <Campo rotulo="Contato de emergência" ajuda="Opcional"><input value={d.contato_nome} onChange={mudar('contato_nome')} placeholder="Nome" /></Campo>
+            <Campo rotulo="Celular" ajuda="Opcional, com DDD" erro={erros.contato_tel}><input value={d.contato_tel} onChange={mudar('contato_tel')} inputMode="tel" /></Campo>
           </div>
           <button className="botao largo">Continuar</button>
+          <button type="button" className="botao fantasma" onClick={() => { setErrosLocais({}); setPasso(4); }}>Pular por agora</button>
           <button type="button" className="botao fantasma" onClick={() => setPasso(2)}>Voltar</button>
         </form>
       )}
@@ -131,8 +161,7 @@ export function OnboardingGestor() {
               <span>{d.apelido} tem {idade} anos. <b>Confirmo que sou o(a) responsável legal</b> e autorizo em nome dele(a) (LGPD, art. 14).</span>
             </label>
           )}
-          <ErroGeral erro={criar.erro && !Object.keys(erros).length ? criar.erro : criar.erro?.campos?.consentimentos} />
-          {Object.keys(erros).length > 0 && !erros.consentimentos && <ErroGeral erro="Confira os dados dos passos anteriores." />}
+          <ErroGeral erro={criar.erro && !Object.keys(errosApi).length ? criar.erro : errosApi.consentimentos} />
           <button className="botao largo" disabled={criar.enviando || !cons.dados_saude || (menor && !cons.responsavel_legal)} onClick={() => criar.executar()}>
             {criar.enviando ? 'Salvando…' : 'Salvar cadastro'}
           </button>
