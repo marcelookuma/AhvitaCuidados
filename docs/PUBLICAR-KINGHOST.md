@@ -9,24 +9,25 @@ A primeira instalação é feita **uma vez**; depois, cada envio ao GitHub publi
 
 ## Etapa 1 — Onde o app fica na hospedagem
 
-Na conta da KingHost, o subdomínio `cuidados.ahvita.com` usa a pasta pública **`/www/cuidados/`**. A estrutura final fica assim:
+Desde 22/10/2026, `cuidados.ahvita.com` tem **hospedagem própria** na KingHost, separada da de `ahvita.com`. A pasta pública é a **`/www/`** dessa hospedagem. A estrutura final fica assim:
 
 ```
-(raiz do FTP)
-├── www/                     área pública do ahvita.com
-│   └── cuidados/            ← pasta pública do app (KINGHOST_PASTA_WWW)
-│       ├── index.html, assets/, .htaccess…
-│       └── api/index.php    (porta de entrada da API)
-└── cuidados_privado/        ← código, senhas, fotos e áudios (KINGHOST_PASTA_PRIVADO)
-    ├── src/  bin/  db/
-    ├── config/configuracao.php
-    └── midias/
+(raiz do FTP da hospedagem cuidados.ahvita.com)
+├── www/                     ← pasta pública do app (KINGHOST_PASTA_WWW = /www/)
+│   ├── index.html, assets/, sw.js, .htaccess…
+│   └── api/index.php        (porta de entrada da API)
+├── cuidados_privado/        ← código, senhas, fotos e áudios (KINGHOST_PASTA_PRIVADO)
+│   ├── src/  bin/  db/
+│   ├── config/configuracao.php   (criado à mão, só no servidor)
+│   └── midias/                   (criada pela API)
+└── .ftp-deploy-sync-state.json   (controle do envio; fora da área pública)
 ```
 
-- A pasta privada fica na **raiz do FTP**, fora de `/www`. Se ficasse em `/www/…`, estaria dentro da área pública do `ahvita.com`. O empacotador recusa colocá-la dentro da pasta pública do app.
-- O app só atende por `https://cuidados.ahvita.com`. Quem abrir `ahvita.com/cuidados/` é redirecionado.
-- **Limpeza da tentativa anterior:** se ainda existir `/www/cuidados/AhvitaCuidados/` (a v1 enviada para a pasta errada), apague a pasta inteira. Se dentro dela houver `configuracao.env`, **troque a senha do banco** usado na v1, porque esse arquivo pode ter ficado acessível pela internet.
-- Anote os dados de **FTP** da conta (servidor, usuário e senha). Eles vão para o GitHub na Etapa 5.
+- A pasta privada fica **fora de `/www`**: nada dela pode ser aberto pela internet, com Apache ou nginx.
+- O FTP principal dessa hospedagem precisa **gravar na raiz** (onde aparece a `www`). Teste no FileZilla: crie e apague uma pasta `teste` ao lado da `www`.
+- Anote os dados de **FTP** (servidor, usuário e senha). Eles vão para o GitHub na Etapa 5.
+
+**DNS:** `cuidados` é um subdomínio de `ahvita.com`. Na zona de DNS de **ahvita.com**, o registro `cuidados` (tipo A ou CNAME) precisa apontar para a **nova** hospedagem. O painel da nova hospedagem mostra o IP ou o endereço a usar. A troca pode levar até algumas horas para valer.
 
 ## Etapa 2 — PHP e SSL
 
@@ -36,10 +37,11 @@ Na conta da KingHost, o subdomínio `cuidados.ahvita.com` usa a pasta pública *
    upload_max_filesize = 10M
    post_max_size = 12M
    ```
-3. **SSL:** painel → **SSL** / **Certificados** → ativar o **certificado gratuito (Let's Encrypt)** para `cuidados.ahvita.com`. Sem HTTPS o login não funciona (o cookie de sessão é seguro).
+3. **Teste do PHP:** envie pelo FileZilla um `teste.php` para `/www/` com a linha `<?php echo 'php ok ' . PHP_VERSION;` e abra `https://cuidados.ahvita.com/teste.php`. Precisa aparecer "php ok 8.x". Depois, apague o arquivo.
+4. **SSL:** painel → **SSL** / **Certificados** → ativar o **certificado gratuito (Let's Encrypt)** para `cuidados.ahvita.com`. Sem HTTPS o login não funciona (o cookie de sessão é seguro).
 
 Pedido pronto para o suporte, se precisar:
-> "Na hospedagem do subdomínio cuidados.ahvita.com (pasta /www/cuidados), preciso de: PHP 8.1 ou superior; extensões pdo_mysql, curl, fileinfo, mbstring e openssl; mod_rewrite e mod_headers ativos; upload_max_filesize 10M e post_max_size 12M; SSL gratuito ativo. Também preciso confirmar que posso criar a pasta /cuidados_privado na raiz do FTP (fora de /www) e que o PHP do site consegue ler essa pasta, e qual é o caminho completo da raiz da conta (ex.: /home/usuario)."
+> "Na hospedagem do domínio cuidados.ahvita.com, preciso de: PHP 8.1 ou superior; extensões pdo_mysql, curl, fileinfo, mbstring e openssl; mod_rewrite e mod_headers ativos; upload_max_filesize 10M e post_max_size 12M; SSL gratuito ativo. Também preciso confirmar que posso criar a pasta /cuidados_privado na raiz do FTP (fora de /www), que o PHP do site consegue ler e gravar nela, e que o FTP aceita conexões do GitHub Actions (servidores fora do Brasil)."
 
 ## Etapa 3 — Banco de dados
 
@@ -66,7 +68,7 @@ Feita uma vez, no repositório **marcelookuma/AhvitaCuidados**. Os segredos fica
 ### 5.1 Separar os dados (vêm da Etapa 1)
 - **Servidor FTP**: só o nome, sem `ftp://` e sem porta (ex.: `ftp.cuidados.ahvita.com`).
 - **Usuário** e **senha** do FTP.
-- **Pasta pública**: `/www/cuidados/` (com barra no início e no fim).
+- **Pasta pública**: `/www/` (com barra no início e no fim).
 - **Pasta privada**: `/cuidados_privado/` (na raiz do FTP; o GitHub cria se não existir).
 
 ### 5.2 Cadastrar os segredos
@@ -87,7 +89,8 @@ Mesma tela → aba **Variables** → **New repository variable**:
 
 | Name | Value | Obrigatória? |
 |---|---|---|
-| `KINGHOST_PASTA_WWW` | `/www/cuidados/` | sim — sem ela nada é publicado |
+| `KINGHOST_PASTA_WWW` | `/www/` | sim — sem ela nada é publicado |
+| `ENVIO_FTP` | `sim` | sim, para o GitHub enviar por FTP (sem ela, só gera o pacote) |
 | `KINGHOST_PASTA_PRIVADO` | `/cuidados_privado/` | sim |
 | `URL_APP` | `https://cuidados.ahvita.com` | recomendada (confere se subiu) |
 | `FTP_PROTOCOLO` | `ftp` | só se o FTPS falhar (5.6) |
@@ -124,30 +127,15 @@ Clique no passo vermelho para ver a mensagem:
 | job **publicar** aparece como *skipped* | normal num envio comum (5.5), ou falta `KINGHOST_PASTA_WWW` |
 | job **testes** vermelho | algo no código: me mande o texto do erro |
 
-### 5.7 Envio manual pelo FileZilla (padrão enquanto o FTP pelo GitHub não grava)
+### 5.7 Envio manual pelo FileZilla (alternativa)
 
-Na KingHost, o usuário FTP entra direto **dentro** da `/www`. Por isso as variáveis usam `/cuidados/`, não `/www/cuidados/`. Pelo GitHub (servidores fora do Brasil), o FTP entrou mas não conseguiu gravar. Enquanto isso não for resolvido com o suporte, o GitHub só **monta o pacote** e você envia pelo FileZilla.
+Toda execução de **Testar e publicar** também gera um pacote pronto: abra a execução → fim da página → **Artifacts** → `pacote-kinghost-N` (.zip). Ele espelha a raiz do FTP (`www/` e `cuidados_privado/`). Descompacte e arraste as duas pastas para a pasta inicial do FTP no FileZilla → **Sobrescrever**. Nunca apague no servidor `cuidados_privado/config/configuracao.php` nem `cuidados_privado/midias/`.
 
-1. Actions → **Testar e publicar** → Run workflow.
-2. Quando ficar verde, abra a execução → seção **Artifacts** → baixe `pacote-kinghost-N` (.zip) e descompacte.
-3. No FileZilla, abra a pasta inicial do FTP (onde aparecem `ahvita01`, `app`, `cuidados`, `erros`) e arraste a pasta `cuidados` do pacote para lá → **Sobrescrever** → "Sempre usar esta ação".
-4. Nunca apague no servidor `config/configuracao.php` nem `midias/` da pasta privada.
-5. Actions → **Conferir publicação** → Run workflow (API no ar e pasta privada bloqueada).
+### 5.8 Lições da primeira tentativa (subdomínio dentro de ahvita.com)
 
-Para voltar ao envio direto por FTP, crie a variável `ENVIO_FTP` = `sim`.
-
-**Pasta privada temporária:** com `KINGHOST_PASTA_PRIVADO` = `/cuidados/_privado/` e `KINGHOST_PRIVADO_NA_AREA_PUBLICA` = `sim`, a pasta privada fica dentro da pública, protegida só por `.htaccess`. Use **apenas para testes, sem pessoas reais**. Antes de usar com dados reais, peça à KingHost uma pasta fora da `/www`.
-
-### 5.8 A KingHost serve por nginx (o .htaccess não vale)
-
-O erro "404 Not Found — nginx" mostrou que o domínio é servido por **nginx**, que ignora os arquivos `.htaccess`. Por isso o app foi ajustado para não depender deles:
-
-- **API:** o endereço é `https://cuidados.ahvita.com/api/index.php?r=/saude` (e assim por diante). O endereço `/api/v1/...` continua valendo onde houver Apache.
-- **Telas do app:** as rotas ficam depois do `#` (ex.: `/#/c`). Links antigos sem `#` são convertidos sozinhos; o link de convite já sai com `#`.
-- **Fotos e áudios:** são gravados como `.php` com um bloqueio no início. Se alguém abrir o endereço do arquivo, recebe 404.
-- **Scripts de `bin/`:** só rodam pela linha de comando, nunca pela web.
-
-**Limite:** sem `.htaccess`, os arquivos comuns da pasta `_privado` (ex.: `db/001_schema.sql`) podem ser abertos pela web. O `configuracao.php` não aparece (o servidor executa e não mostra nada), mas **antes de dados reais a pasta privada precisa ficar fora da `/www`**. Peça ao suporte da KingHost.
+- **Bloqueio de IP internacional no FTP:** o GitHub conecta de fora do Brasil. Libere no painel na hora de publicar e volte o bloqueio depois. A KingHost também recusa uma segunda conexão logo em seguida, por isso o envio é feito numa conexão só.
+- **nginx:** o servidor pode ignorar `.htaccess`. O app não depende dele: a API responde em `/api/index.php?r=/…`, as telas usam `#` (ex.: `/#/entrar`), fotos e áudios são gravados como `.php` com bloqueio e os scripts de `bin/` só rodam pela linha de comando.
+- **PHP:** confira que `.php` executa (teste da Etapa 2) antes de publicar.
 
 ## Etapa 6 — Arquivo de configuração (só no servidor, nunca no GitHub)
 

@@ -2,7 +2,7 @@
 # Segredos (Settings → Secrets and variables → Actions → Secrets):
 #   FTP_SERVIDOR, FTP_USUARIO, FTP_SENHA
 # Variáveis (mesma tela → aba Variables):
-#   KINGHOST_PASTA_WWW      ex.: /www/cuidados/      (pasta pública do subdomínio)
+#   KINGHOST_PASTA_WWW      ex.: /www/               (pasta pública do domínio cuidados.ahvita.com)
 #   KINGHOST_PASTA_PRIVADO  ex.: /cuidados_privado/  (raiz do FTP, fora de /www)
 #   URL_APP                 ex.: https://cuidados.ahvita.com
 #   ENVIO_FTP               opcional: sim = envia por FTP. Sem ela, só gera o
@@ -123,13 +123,14 @@ jobs:
           mkdir -p "envio/$PV"
           cp -a pacote-kinghost/privado/. "envio/$PV"
           rm -f "envio/${PV}config/configuracao.php"
+          # midias/ vai só com o .htaccess (nunca apaga fotos e áudios do servidor)
           cat > envio/COMO-ENVIAR.txt <<TXT
           Ahvita Cuidados - versão ${GITHUB_SHA::7}
 
           1. Descompacte este arquivo no seu computador.
           2. Abra o FileZilla e conecte na KingHost.
-          3. Arraste as pastas daqui para a pasta inicial do FTP
-             (onde aparecem ahvita01, app, cuidados, erros).
+          3. Arraste as pastas daqui (${W%/} e ${PV%/}) para a pasta
+             inicial do FTP (a que mostra a pasta ${W%/}).
              Quando perguntar sobre arquivos existentes, escolha
              "Sobrescrever" e marque "Sempre usar esta ação".
           4. NÃO apague no servidor: ${PV}config/configuracao.php
@@ -163,7 +164,9 @@ jobs:
             **/.git*/**
             ${{ steps.pastas.outputs.sub }}midias/**
             ${{ steps.pastas.outputs.sub }}config/configuracao.php
-      - name: Enviar app web (www)
+      # Pasta privada fora da pública (o certo): envia a partir da raiz do FTP,
+      # também numa conexão só. O estado do envio fica na raiz, fora da área pública.
+      - name: Enviar app + API numa conexão só (a partir da raiz do FTP)
         if: vars.ENVIO_FTP == 'sim' && steps.pastas.outputs.sub == ''
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -171,28 +174,15 @@ jobs:
           username: ${{ secrets.FTP_USUARIO }}
           password: ${{ secrets.FTP_SENHA }}
           protocol: ${{ vars.FTP_PROTOCOLO || 'ftps' }}
-          local-dir: ./pacote-kinghost/www/
-          server-dir: ${{ steps.pastas.outputs.www }}
-          log-level: standard
-      - name: Pausa entre conexões (limite da KingHost)
-        if: vars.ENVIO_FTP == 'sim' && steps.pastas.outputs.sub == ''
-        run: sleep 60
-      - name: Enviar API (privado) — sem tocar em configuracao.php nem nas fotos
-        if: vars.ENVIO_FTP == 'sim' && steps.pastas.outputs.sub == ''
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVIDOR }}
-          username: ${{ secrets.FTP_USUARIO }}
-          password: ${{ secrets.FTP_SENHA }}
-          protocol: ${{ vars.FTP_PROTOCOLO || 'ftps' }}
-          local-dir: ./pacote-kinghost/privado/
-          server-dir: ${{ steps.pastas.outputs.privado }}
+          local-dir: ./envio/
+          server-dir: ./
           log-level: standard
           exclude: |
             **/.git*
             **/.git*/**
-            midias/**
-            config/configuracao.php
+            COMO-ENVIAR.txt
+            ${{ steps.pastas.outputs.privado }}midias/**
+            ${{ steps.pastas.outputs.privado }}config/configuracao.php
       - name: Diagnóstico do FTP (só roda se o envio falhar)
         if: failure() && vars.ENVIO_FTP == 'sim'
         env:
