@@ -104,6 +104,9 @@ jobs:
           rel() { local x="${1#/}"; x="${x%/}"; echo "$x/"; }
           echo "www=$(rel "$W")" >> "$GITHUB_OUTPUT"
           echo "privado=$(rel "$PV")" >> "$GITHUB_OUTPUT"
+          w=$(rel "$W"); pv=$(rel "$PV")
+          # Pasta privada dentro da pública: caminho dela a partir da pública (ex.: _privado/)
+          case "$pv" in "$w"*) echo "sub=${pv#"$w"}" >> "$GITHUB_OUTPUT" ;; esac
           echo "Pasta pública:  $(rel "$W")"
           echo "Pasta privada:  $(rel "$PV")"
       - name: Montar pasta para envio manual (espelha o FTP)
@@ -138,8 +141,26 @@ jobs:
           path: envio/
           include-hidden-files: true
           retention-days: 30
+      # A KingHost recusa uma segunda conexão logo depois da primeira. Com a pasta
+      # privada dentro da pública, tudo vai numa conexão só.
+      - name: Enviar app + API numa conexão só (pasta privada dentro da pública)
+        if: vars.ENVIO_FTP == 'sim' && steps.pastas.outputs.sub != ''
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVIDOR }}
+          username: ${{ secrets.FTP_USUARIO }}
+          password: ${{ secrets.FTP_SENHA }}
+          protocol: ${{ vars.FTP_PROTOCOLO || 'ftps' }}
+          local-dir: ./envio/${{ steps.pastas.outputs.www }}
+          server-dir: ${{ steps.pastas.outputs.www }}
+          log-level: standard
+          exclude: |
+            **/.git*
+            **/.git*/**
+            ${{ steps.pastas.outputs.sub }}midias/**
+            ${{ steps.pastas.outputs.sub }}config/configuracao.php
       - name: Enviar app web (www)
-        if: vars.ENVIO_FTP == 'sim'
+        if: vars.ENVIO_FTP == 'sim' && steps.pastas.outputs.sub == ''
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVIDOR }}
@@ -148,9 +169,12 @@ jobs:
           protocol: ${{ vars.FTP_PROTOCOLO || 'ftps' }}
           local-dir: ./pacote-kinghost/www/
           server-dir: ${{ steps.pastas.outputs.www }}
-          log-level: verbose
+          log-level: standard
+      - name: Pausa entre conexões (limite da KingHost)
+        if: vars.ENVIO_FTP == 'sim' && steps.pastas.outputs.sub == ''
+        run: sleep 60
       - name: Enviar API (privado) — sem tocar em configuracao.php nem nas fotos
-        if: vars.ENVIO_FTP == 'sim'
+        if: vars.ENVIO_FTP == 'sim' && steps.pastas.outputs.sub == ''
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVIDOR }}
@@ -159,7 +183,7 @@ jobs:
           protocol: ${{ vars.FTP_PROTOCOLO || 'ftps' }}
           local-dir: ./pacote-kinghost/privado/
           server-dir: ${{ steps.pastas.outputs.privado }}
-          log-level: verbose
+          log-level: standard
           exclude: |
             **/.git*
             **/.git*/**
@@ -175,5 +199,6 @@ jobs:
           PV: ${{ steps.pastas.outputs.privado }}
           PROTO: ${{ vars.FTP_PROTOCOLO || 'ftps' }}
         run: |
+          sleep 60
           mkdir -p /tmp/diag && cd /tmp/diag && npm init -y >/dev/null && npm install --no-audit --no-fund basic-ftp@5.2.2 >/dev/null
           NODE_PATH=/tmp/diag/node_modules node "$GITHUB_WORKSPACE/scripts/diagnostico-ftp.cjs"
