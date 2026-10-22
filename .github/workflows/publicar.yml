@@ -92,6 +92,17 @@ jobs:
         run: |
           npm ci
           npm run pacote:kinghost
+      - name: Normalizar pastas (o FTP da KingHost só aceita caminhos relativos)
+        id: pastas
+        env:
+          W: ${{ vars.KINGHOST_PASTA_WWW }}
+          PV: ${{ vars.KINGHOST_PASTA_PRIVADO }}
+        run: |
+          rel() { local x="${1#/}"; x="${x%/}"; echo "$x/"; }
+          echo "www=$(rel "$W")" >> "$GITHUB_OUTPUT"
+          echo "privado=$(rel "$PV")" >> "$GITHUB_OUTPUT"
+          echo "Pasta pública:  $(rel "$W")"
+          echo "Pasta privada:  $(rel "$PV")"
       - name: Enviar app web (www)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -100,7 +111,7 @@ jobs:
           password: ${{ secrets.FTP_SENHA }}
           protocol: ${{ vars.FTP_PROTOCOLO || 'ftps' }}
           local-dir: ./pacote-kinghost/www/
-          server-dir: ${{ vars.KINGHOST_PASTA_WWW }}
+          server-dir: ${{ steps.pastas.outputs.www }}
           log-level: verbose
       - name: Enviar API (privado) — sem tocar em configuracao.php nem nas fotos
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
@@ -110,7 +121,7 @@ jobs:
           password: ${{ secrets.FTP_SENHA }}
           protocol: ${{ vars.FTP_PROTOCOLO || 'ftps' }}
           local-dir: ./pacote-kinghost/privado/
-          server-dir: ${{ vars.KINGHOST_PASTA_PRIVADO }}
+          server-dir: ${{ steps.pastas.outputs.privado }}
           log-level: verbose
           exclude: |
             **/.git*
@@ -123,25 +134,26 @@ jobs:
           S: ${{ secrets.FTP_SERVIDOR }}
           U: ${{ secrets.FTP_USUARIO }}
           P: ${{ secrets.FTP_SENHA }}
-          W: ${{ vars.KINGHOST_PASTA_WWW }}
-          PV: ${{ vars.KINGHOST_PASTA_PRIVADO }}
+          W: ${{ steps.pastas.outputs.www }}
+          PV: ${{ steps.pastas.outputs.privado }}
           PROTO: ${{ vars.FTP_PROTOCOLO || 'ftps' }}
         run: |
           TLS=""; [ "$PROTO" = "ftps" ] && TLS="--ssl-reqd"
-          listar() { curl -sS -m 30 $TLS --list-only -u "$U:$P" "ftp://$S$1" 2>&1 | sed 's/^/   /' || true; }
+          listar() { curl -sS -m 30 $TLS --list-only -u "$U:$P" "ftp://$S/$1" 2>&1 | sed 's/^/   /' || true; }
           testar() {
             if curl -sS -m 30 $TLS -u "$U:$P" "ftp://$S/" -Q "MKD ${1}teste-github" -Q "RMD ${1}teste-github" -o /dev/null 2>/tmp/e; then
-              echo "   OK: o usuário FTP consegue criar pastas em $1"
+              echo "   OK: consegue criar pastas em '${1:-raiz}'"
             else
-              echo "   FALHOU em $1: $(cat /tmp/e)"
+              echo "   FALHOU em '${1:-raiz}': $(cat /tmp/e)"
             fi
           }
-          echo "== O que o usuário FTP vê na raiz (/) =="; listar "/"
-          echo "== Conteúdo de /www/ =="; listar "/www/"
+          echo "== O que o usuário FTP vê ao entrar =="; listar ""
+          echo "== Conteúdo de www/ =="; listar "www/"
           echo "== Conteúdo de $W =="; listar "$W"
-          echo "== Teste de escrita na pasta pública =="; testar "$W"
-          echo "== Teste de escrita na raiz (onde fica a pasta privada) =="; testar "/"
-          echo "Copie tudo acima (a partir de '== O que o usuário FTP vê') e mande para o Claude."
+          echo "== Pode criar pastas na pasta pública ($W)? =="; testar "$W"
+          echo "== Pode criar pastas na raiz (onde ficaria $PV)? =="; testar ""
+          echo "== Pode criar pastas em www/? =="; testar "www/"
+          echo "Copie tudo a partir de '== O que o usuário FTP vê' e mande para o Claude."
 
       - name: Conferir se está no ar
         if: vars.URL_APP != ''
