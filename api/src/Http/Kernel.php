@@ -8,12 +8,16 @@ use Cuidados\Rotas;
 use Cuidados\Support\Auditoria;
 use Cuidados\Support\Config;
 use Cuidados\Support\ErroHttp;
+use Cuidados\Support\Tarefas;
 
 /** Ciclo da requisição: segurança → sessão → rota → resposta JSON. */
 final class Kernel
 {
     public static function atender(Requisicao $req): Resposta
     {
+        if ($req->metodo !== 'OPTIONS') {
+            Tarefas::seVencidas(); // hospedagem sem cron: a API cuida das tarefas periódicas
+        }
         $r = self::processar($req);
         self::cabecalhosSeguranca($req, $r);
         return $r;

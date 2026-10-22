@@ -34,6 +34,8 @@ final class Config
         'twilio.token' => '',
         'twilio.verify_sid' => '',
         'termos.versao' => '2026-10',
+        'tarefas.automaticas' => true,       // roda as tarefas dentro da API (hospedagem sem cron)
+        'tarefas.chave' => '',               // para POST /sistema/tarefas (vazio = desligado)
     ];
 
     public static function carregar(?string $arquivo = null): void

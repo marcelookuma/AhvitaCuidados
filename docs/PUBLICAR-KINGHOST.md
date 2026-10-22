@@ -177,22 +177,22 @@ return [
 - **Nunca** use `'ambiente' => 'teste'` com pessoas reais: em teste o código de acesso aparece na tela.
 - A publicação automática **não sobrescreve nem apaga** este arquivo.
 
-## Etapa 7 — Cron (tarefas a cada 5 minutos)
+## Etapa 7 — Tarefas a cada 5 minutos (não precisa de cron)
 
-Painel → **Agendador de tarefas** (ou "Cron") → nova tarefa:
-- Frequência: **a cada 5 minutos**
-- Comando:
-  ```
-  php /home/USUARIO/cuidados_privado/bin/agendador.php
-  ```
-  Troque `/home/USUARIO` pelo caminho da raiz da conta (o painel ou o suporte informa). Se o painel pedir o PHP com versão, use o da Etapa 2 (ex.: `php8.2`).
+O app tem tarefas periódicas: atualizar o banco depois de cada publicação, avisar quando um atendimento está sem confirmação e limpar códigos e sessões vencidos.
 
-O cron:
-- aplica migrações novas do banco (inclusive o `001_schema.sql`, se você não importou na Etapa 3);
-- gera o alerta "sem resposta no prazo combinado" para gestor(a) e empresa;
-- limpa códigos e sessões vencidos.
+**Sem cron (padrão, plano de revenda da KingHost):** a própria API roda essas tarefas na primeira requisição depois de 5 minutos. Com o app aberto, ele faz requisições a cada poucos segundos, então na prática roda sozinho. Na **primeira** visita (ex.: abrir `https://cuidados.ahvita.com/api/v1/saude`), a API cria as 25 tabelas do banco.
 
-Sem cron o app continua funcionando, mas o alerta só aparece quando alguém abre o painel, e as migrações futuras não entram sozinhas.
+Limite: se ninguém abrir o app por horas, os alertas só são calculados na próxima abertura. Os painéis do gestor e da empresa também conferem a cobertura quando são abertos.
+
+**Opcional, para rodar mesmo sem ninguém usando:** um serviço gratuito como o cron-job.org chama a API a cada 5 minutos.
+1. Gere uma chave longa: `php -r "echo bin2hex(random_bytes(32));"` (ou qualquer gerador de 64 caracteres aleatórios).
+2. Em `configuracao.php`: `'tarefas' => ['automaticas' => true, 'chave' => 'A-CHAVE'],`
+3. No cron-job.org: URL `https://cuidados.ahvita.com/api/v1/sistema/tarefas`, método **POST**, a cada 5 min, cabeçalho `X-Chave-Tarefas: A-CHAVE`.
+
+A chamada não leva nem devolve dados de pessoas (só quantos alertas foram gerados). Com a chave errada ou vazia, a API responde 404.
+
+**Se a hospedagem tiver cron:** `php /home/USUARIO/<pasta privada>/bin/agendador.php` a cada 5 minutos.
 
 ## Etapa 8 — Conferir
 

@@ -56,4 +56,10 @@ return [
     ],
 
     'termos' => ['versao' => '2026-10'],
+
+    // Tarefas a cada 5 min (banco, alertas de cobertura, limpeza).
+    // Sem cron na hospedagem, a própria API roda sozinha: deixe 'automaticas' => true.
+    // 'chave' (opcional): libera POST /api/v1/sistema/tarefas para um serviço externo
+    // (ex.: cron-job.org) com o cabeçalho X-Chave-Tarefas. Gere igual a app.segredo.
+    'tarefas' => ['automaticas' => true, 'chave' => ''],
 ];

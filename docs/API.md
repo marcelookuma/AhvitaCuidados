@@ -24,6 +24,7 @@ Base: `https://cuidados.ahvita.com/api/v1` · JSON UTF-8 · datas ISO 8601 em UT
 | Método | Caminho | Corpo | Observação |
 |---|---|---|---|
 | GET | `/saude` | — | público |
+| POST | `/sistema/tarefas` | — | cabeçalho `X-Chave-Tarefas` (desligado sem `tarefas.chave`) — tarefas periódicas para serviço externo |
 | GET | `/auth/canais` | — | público; `whatsapp`, `sms`, `email` ligados |
 | POST | `/auth/codigo` | `{destino, canal?}` | celular ou e-mail; em `teste` devolve `codigo_teste` |
 | POST | `/auth/entrar` | `{destino, codigo, dispositivo?}` | → `{token, usuario, novo}` + cookie |

@@ -20,6 +20,7 @@ final class Rotas
     public static function registrar(Roteador $r): void
     {
         $r->add('GET', '/saude', fn() => \Cuidados\Http\Resposta::json(['ok' => true, 'versao' => '1.0.0']), true);
+        $r->add('POST', '/sistema/tarefas', fn($req) => self::tarefas($req), true);
 
         // Acesso
         $r->add('GET', '/auth/canais', [Auth::class, 'canais'], true);
@@ -97,5 +98,16 @@ final class Rotas
         // Fotos e áudios
         $r->add('POST', '/midias', [Midias::class, 'enviar']);
         $r->add('GET', '/midias/{id}', [Midias::class, 'ver']);
+    }
+
+    /** Chamada externa das tarefas (ex.: cron-job.org). Desligada se tarefas.chave estiver vazia. */
+    public static function tarefas(\Cuidados\Http\Requisicao $req): \Cuidados\Http\Resposta
+    {
+        $chave = (string)\Cuidados\Support\Config::get('tarefas.chave', '');
+        $enviada = (string)($req->cabecalho('x-chave-tarefas') ?? '');
+        if (strlen($chave) < 32 || !hash_equals($chave, $enviada)) {
+            throw \Cuidados\Support\ErroHttp::naoEncontrado();
+        }
+        return \Cuidados\Http\Resposta::json(['ok' => true] + \Cuidados\Support\Tarefas::executar());
     }
 }
