@@ -82,6 +82,11 @@ final class Email
     private static function falha(string $motivo): ErroHttp
     {
         error_log('[cuidados] e-mail: ' . $motivo);
-        return new ErroHttp(424, 'email_fora', 'Não conseguimos enviar o e-mail agora. Tente de novo em alguns minutos.');
+        $msg = 'Não conseguimos enviar o e-mail agora. Tente de novo em alguns minutos.';
+        // Só durante a instalação: mostra o motivo na tela (não contém senha). Desligue depois.
+        if (filter_var(Config::get('email.mostrar_erro', false), FILTER_VALIDATE_BOOL)) {
+            $msg .= ' [Motivo: ' . $motivo . ']';
+        }
+        return new ErroHttp(424, 'email_fora', $msg);
     }
 }

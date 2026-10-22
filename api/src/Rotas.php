@@ -127,6 +127,15 @@ final class Rotas
         return \Cuidados\Http\Resposta::json([
             'ok' => true, 'versao' => '1.0.0', 'php' => PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION,
             'configuracao' => \Cuidados\Support\Config::configurado(), 'banco' => $banco,
+            // O PHP consegue gravar fotos/áudios e o log? (false = ajustar permissão da pasta no FTP)
+            'grava_midias' => self::gravavel((string)\Cuidados\Support\Config::get('midias.pasta')),
+            'grava_logs' => self::gravavel(CUIDADOS_RAIZ . '/logs'),
         ]);
+    }
+
+    private static function gravavel(string $pasta): bool
+    {
+        if (!is_dir($pasta)) @mkdir($pasta, 0750, true);
+        return is_dir($pasta) && is_writable($pasta);
     }
 }

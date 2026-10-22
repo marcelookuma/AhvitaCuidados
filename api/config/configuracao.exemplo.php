@@ -45,6 +45,8 @@ return [
             // Use o servidor indicado no painel de e-mail; em último caso, false (ainda criptografa).
             'verificar_certificado' => true,
         ],
+        // Durante a instalação, true mostra na tela o motivo de falha no envio. Depois, false.
+        'mostrar_erro' => false,
     ],
 
     'twilio' => [
