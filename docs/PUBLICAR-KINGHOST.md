@@ -54,23 +54,68 @@ Pedido pronto para o suporte, se precisar:
 
 ## Etapa 5 — Ligar o GitHub à KingHost
 
-No repositório **marcelookuma/AhvitaCuidados** → **Settings** → **Secrets and variables** → **Actions**:
+Feita uma vez, no repositório **marcelookuma/AhvitaCuidados**. Os segredos ficam guardados criptografados no GitHub: ninguém (nem você) consegue lê-los de volta depois de salvos, só substituí-los.
 
-| Aba | Nome | Valor |
+### 5.1 Separar os dados (vêm da Etapa 1)
+- **Servidor FTP**: só o nome, sem `ftp://` e sem porta (ex.: `ftp.cuidados.ahvita.com`).
+- **Usuário** e **senha** do FTP.
+- **Pasta pública**: abra o FTP (FileZilla ou gerenciador de arquivos do painel) e veja o nome da pasta onde ficam os arquivos do site, normalmente `www`. O valor é `/www/` (com barra no início e no fim).
+- **Pasta privada**: `/privado/` (ao lado da `www`; o GitHub cria se não existir).
+
+### 5.2 Cadastrar os segredos
+1. Repositório → aba **Settings** (engrenagem, no topo; só aparece para quem é dono).
+2. Menu da esquerda → **Secrets and variables** → **Actions**.
+3. Aba **Secrets** → botão **New repository secret**. Crie um de cada vez:
+
+| Name (exatamente assim) | Secret |
+|---|---|
+| `FTP_SERVIDOR` | `ftp.cuidados.ahvita.com` |
+| `FTP_USUARIO` | usuário FTP |
+| `FTP_SENHA` | senha FTP |
+
+4. Clique em **Add secret** após cada um.
+
+### 5.3 Cadastrar as variáveis
+Mesma tela → aba **Variables** → **New repository variable**:
+
+| Name | Value | Obrigatória? |
 |---|---|---|
-| Secrets | `FTP_SERVIDOR` | servidor FTP da Etapa 1 |
-| Secrets | `FTP_USUARIO` | usuário FTP |
-| Secrets | `FTP_SENHA` | senha FTP |
-| Variables | `KINGHOST_PASTA_WWW` | `/www/` (pasta pública; confira abrindo o FTP) |
-| Variables | `KINGHOST_PASTA_PRIVADO` | `/privado/` |
-| Variables | `URL_APP` | `https://cuidados.ahvita.com` |
-| Variables | `FTP_PROTOCOLO` | só se o envio falhar com FTPS: `ftp` |
+| `KINGHOST_PASTA_WWW` | `/www/` | sim — sem ela nada é publicado |
+| `KINGHOST_PASTA_PRIVADO` | `/privado/` | sim |
+| `URL_APP` | `https://cuidados.ahvita.com` | recomendada (confere se subiu) |
+| `FTP_PROTOCOLO` | `ftp` | só se o FTPS falhar (5.6) |
+| `PUBLICAR_AUTOMATICO` | `sim` | **não crie agora** (ver 5.5) |
 
-Recomendado: **Settings → Environments → New environment** → nome `producao` → marcar **Required reviewers** e colocar você. Assim nada vai ao ar sem a sua aprovação.
+Crie como **variável do repositório** (não de "environment"): o fluxo só enxerga as do repositório.
 
-Depois: aba **Actions** → **Testar e publicar** → **Run workflow** → `main`. Em uns 4 minutos:
-- `testes` fica verde;
-- `publicar` pede sua aprovação (se ligou o ambiente) e envia `www/` e `privado/` por FTP.
+### 5.4 Primeira publicação
+1. Aba **Actions** → à esquerda, **Testar e publicar** → botão **Run workflow** (à direita) → branch `main` → **Run workflow**.
+2. Clique na execução que aparece. São duas etapas:
+   - **testes** (≈ 3 min): banco de teste, 91 verificações da API, vocabulário e build.
+   - **publicar** (≈ 3–8 min na primeira vez, pois envia todos os arquivos; depois só o que mudou).
+3. Tudo verde = arquivos na KingHost. Siga para a Etapa 6 (arquivo de configuração).
+
+O passo "Conferir se está no ar" chama `/api/v1/saude`, que responde mesmo antes do `configuracao.php` existir. Se ele passou, o servidor está servindo a API corretamente.
+
+### 5.5 Como funcionam as próximas publicações
+- **Padrão (recomendado na validação):** cada envio para a `main` **só testa**. Para colocar no ar, você clica em **Run workflow** — é a sua aprovação. (A aprovação automática do GitHub, "required reviewers", não está disponível em repositório privado nos planos Free, Pro e Team.)
+- **Automático:** crie a variável `PUBLICAR_AUTOMATICO` = `sim`. Aí todo envio que passar nos testes vai direto ao ar. Para voltar ao manual, apague a variável.
+- Para desfazer uma publicação ruim: aba **Actions** → uma execução anterior que estava boa → **Re-run all jobs** (republica aquela versão).
+
+### 5.6 Se falhar
+Clique no passo vermelho para ver a mensagem:
+
+| Mensagem (ou parecida) | O que fazer |
+|---|---|
+| `530 Login authentication failed` | usuário ou senha FTP errados: edite `FTP_USUARIO`/`FTP_SENHA` |
+| `ENOTFOUND` / `getaddrinfo` | nome do servidor errado em `FTP_SERVIDOR` (sem `ftp://`) |
+| `ETIMEDOUT` / `ECONNREFUSED` | servidor errado, ou a KingHost bloqueou o acesso: pergunte ao suporte se o FTP aceita conexões externas (o GitHub conecta de fora do Brasil) |
+| erro de TLS / `certificate` / `AUTH TLS` | crie `FTP_PROTOCOLO` = `ftp` (sem criptografia: troque a senha FTP depois de estabilizar e peça FTPS ao suporte) |
+| `550` / `No such file or directory` | pasta errada em `KINGHOST_PASTA_WWW`/`KINGHOST_PASTA_PRIVADO` |
+| "Conferir se está no ar" com `404` | arquivos foram para a pasta errada (não é a pública do domínio) |
+| "Conferir se está no ar" com `500` | PHP abaixo de 8.1 (Etapa 2) |
+| job **publicar** aparece como *skipped* | normal num envio comum (5.5), ou falta `KINGHOST_PASTA_WWW` |
+| job **testes** vermelho | algo no código: me mande o texto do erro |
 
 ## Etapa 6 — Arquivo de configuração (só no servidor, nunca no GitHub)
 
@@ -162,7 +207,7 @@ Em um banco e hospedagem separados: `'ambiente' => 'teste'`, `'codigo' => ['cana
 ## Publicação automática pelo GitHub (depois da primeira instalação)
 O arquivo `.github/workflows/publicar.yml` faz, a cada envio para a branch `main`:
 1. **Testa**: sintaxe PHP, banco MariaDB de teste, as 91 verificações da API, a trilha de auditoria, o vocabulário e o build do app.
-2. **Publica** (só se os testes passarem): envia `www/` e `privado/` por FTP, sem tocar em `privado/config/configuracao.php` nem em `privado/midias/`.
+2. **Publica** quando você clica em Run workflow (ou a cada envio, se `PUBLICAR_AUTOMATICO` = `sim`), só se os testes passarem: envia `www/` e `privado/` por FTP, sem tocar em `privado/config/configuracao.php` nem em `privado/midias/`.
 3. **Confere** se `URL_APP/api/v1/saude` responde.
 
 As migrações do banco (`db/002_*.sql` em diante) são aplicadas pelo cron em até 5 minutos depois da publicação.

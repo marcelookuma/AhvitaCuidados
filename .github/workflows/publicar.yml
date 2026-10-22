@@ -6,7 +6,10 @@
 #   KINGHOST_PASTA_PRIVADO  ex.: /privado/        (fora da pasta pública)
 #   URL_APP                 ex.: https://cuidados.ahvita.com
 #   FTP_PROTOCOLO           opcional: ftps (padrão) ou ftp
-# Enquanto KINGHOST_PASTA_WWW não existir, o fluxo só testa (não publica).
+#   PUBLICAR_AUTOMATICO     opcional: sim = publica a cada envio para a main
+# Sem PUBLICAR_AUTOMATICO, um envio só TESTA; publicar exige clicar em
+# Actions → "Testar e publicar" → Run workflow (vale como aprovação manual).
+# Enquanto KINGHOST_PASTA_WWW não existir, o fluxo nunca publica.
 name: Testar e publicar
 
 on:
@@ -71,9 +74,10 @@ jobs:
 
   publicar:
     needs: testes
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.KINGHOST_PASTA_WWW != ''
+    if: >-
+      github.ref == 'refs/heads/main' && vars.KINGHOST_PASTA_WWW != '' &&
+      (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && vars.PUBLICAR_AUTOMATICO == 'sim'))
     runs-on: ubuntu-latest
-    environment: producao
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
