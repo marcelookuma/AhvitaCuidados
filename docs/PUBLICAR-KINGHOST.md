@@ -27,7 +27,7 @@ Desde 22/10/2026, `cuidados.ahvita.com` tem **hospedagem própria** na KingHost,
 
 **Por que a pasta privada está dentro da pública e como ela fica protegida:** pelo FTP não dá para alcançar uma pasta fora da pública. Então tudo na pasta privada é `.php`. O servidor **executa** esses arquivos, e eles não mostram nada: as classes só se declaram, o `configuracao.php` só devolve valores para o app, e o esquema e as mídias respondem 404. Cada pasta tem um `index.php` que responde 404, e o `.htaccess` bloqueia tudo onde houver Apache. É o mesmo modelo do WordPress, cujo `wp-config.php` fica na pasta pública.
 
-**Risco que resta:** se o PHP do site parar de funcionar (por exemplo, numa troca de versão malfeita), o servidor pode entregar os `.php` como texto, inclusive o `configuracao.php` com a senha do banco. Para eliminar esse risco, peça à KingHost uma pasta **fora** da pública, acessível pelo FTP e legível pelo PHP. Com ela, basta trocar `KINGHOST_PASTA_PRIVADO` e apagar `KINGHOST_PRIVADO_NA_AREA_PUBLICA`.
+**Risco que resta:** se o PHP do site parar de funcionar (por exemplo, numa troca de versão malfeita), o servidor pode entregar os `.php` como texto, inclusive o `configuracao.php` com a senha do banco. Para eliminar esse risco, peça à KingHost uma pasta **fora** da pública, acessível pelo FTP e legível pelo PHP. Com ela, basta trocar `KINGHOST_PASTA_PRIVADO` e apagar `PASTA_PRIVADA_DENTRO_DA_WWW`.
 
 **DNS:** `cuidados` é um subdomínio de `ahvita.com`. Na zona de DNS de **ahvita.com**, o registro `cuidados` (tipo A ou CNAME) precisa apontar para a **nova** hospedagem. O painel da nova hospedagem mostra o IP ou o endereço a usar. A troca pode levar até algumas horas para valer.
 
@@ -92,7 +92,7 @@ Mesma tela → aba **Variables** → **New repository variable**:
 | Name | Value | Obrigatória? |
 |---|---|---|
 | `KINGHOST_PASTA_WWW` | `/` | sim — sem ela nada é publicado |
-| `KINGHOST_PRIVADO_NA_AREA_PUBLICA` | `sim` | sim, enquanto não houver pasta fora da pública |
+| `PASTA_PRIVADA_DENTRO_DA_WWW` | `sim` | sim, enquanto o FTP só alcançar a `www` (confirma que a pasta privada fica **dentro** da `www`) |
 | `ENVIO_FTP` | `sim` | sim, para o GitHub enviar por FTP (sem ela, só gera o pacote) |
 | `KINGHOST_PASTA_PRIVADO` | `/cuidados_privado/` | sim |
 | `URL_APP` | `https://cuidados.ahvita.com` | recomendada (confere se subiu) |

@@ -31,7 +31,7 @@ jobs:
         run: |
           curl -fsS -o /dev/null -w 'index.html → HTTP %{http_code}\n' "${{ vars.URL_APP }}/"
       - name: Pasta privada bloqueada
-        if: vars.KINGHOST_PRIVADO_NA_AREA_PUBLICA == 'sim'
+        if: (vars.PASTA_PRIVADA_DENTRO_DA_WWW == 'sim' || vars.KINGHOST_PRIVADO_NA_AREA_PUBLICA == 'sim')
         env:
           W: ${{ vars.KINGHOST_PASTA_WWW }}
           PV: ${{ vars.KINGHOST_PASTA_PRIVADO }}

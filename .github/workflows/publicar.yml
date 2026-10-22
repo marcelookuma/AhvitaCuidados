@@ -5,7 +5,8 @@
 #   KINGHOST_PASTA_WWW      / quando o FTP já abre na pasta pública (caso da KingHost);
 #                           /www/ quando o FTP mostra a pasta www
 #   KINGHOST_PASTA_PRIVADO  ex.: /cuidados_privado/ (de preferência fora da pública)
-#   KINGHOST_PRIVADO_NA_AREA_PUBLICA  sim = aceita a pasta privada dentro da pública
+#   PASTA_PRIVADA_DENTRO_DA_WWW  sim = você aceita que a pasta privada fique DENTRO da www
+#                           (necessário quando o FTP já abre dentro da www, como na KingHost)
 #   URL_APP                 ex.: https://cuidados.ahvita.com
 #   ENVIO_FTP               opcional: sim = envia por FTP. Sem ela, só gera o
 #                           pacote para envio manual (Artifacts → FileZilla)
@@ -96,7 +97,7 @@ jobs:
         env:
           KINGHOST_PASTA_WWW: ${{ vars.KINGHOST_PASTA_WWW }}
           KINGHOST_PASTA_PRIVADO: ${{ vars.KINGHOST_PASTA_PRIVADO }}
-          KINGHOST_PRIVADO_NA_AREA_PUBLICA: ${{ vars.KINGHOST_PRIVADO_NA_AREA_PUBLICA }}
+          PASTA_PRIVADA_DENTRO_DA_WWW: ${{ vars.PASTA_PRIVADA_DENTRO_DA_WWW || vars.KINGHOST_PRIVADO_NA_AREA_PUBLICA }}
           URL_APP: ${{ vars.URL_APP }}
         run: |
           npm ci

@@ -41,14 +41,15 @@ const pastaPrivado = process.env.KINGHOST_PASTA_PRIVADO || '/privado/';
 const absWww = posix.resolve('/', pastaWww);
 const absPrivado = posix.resolve('/', pastaPrivado);
 const naAreaPublica = absWww === '/' || absPrivado === absWww || absPrivado.startsWith(absWww + '/');
-const permitirNaAreaPublica = process.env.KINGHOST_PRIVADO_NA_AREA_PUBLICA === 'sim';
+// PASTA_PRIVADA_DENTRO_DA_WWW=sim (nome antigo: KINGHOST_PRIVADO_NA_AREA_PUBLICA)
+const permitirNaAreaPublica = (process.env.PASTA_PRIVADA_DENTRO_DA_WWW || process.env.KINGHOST_PRIVADO_NA_AREA_PUBLICA) === 'sim';
 if (absPrivado === absWww) {
   console.error('✗ A pasta privada não pode ser a própria pasta pública.');
   process.exit(1);
 }
 if (naAreaPublica && !permitirNaAreaPublica) {
   console.error(`✗ A pasta privada (${pastaPrivado}) está dentro da pasta pública (${pastaWww}).`);
-  console.error('  Use uma pasta fora da área pública ou, como solução temporária, defina KINGHOST_PRIVADO_NA_AREA_PUBLICA=sim.');
+  console.error('  Use uma pasta fora da área pública ou, como solução temporária, crie no GitHub a variável PASTA_PRIVADA_DENTRO_DA_WWW = sim.');
   process.exit(1);
 }
 // Bloqueio extra: a pasta privada dentro da pública nunca é servida pelo Apache.
