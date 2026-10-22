@@ -5,6 +5,8 @@
 #   KINGHOST_PASTA_WWW      ex.: /www/cuidados/      (pasta pública do subdomínio)
 #   KINGHOST_PASTA_PRIVADO  ex.: /cuidados_privado/  (raiz do FTP, fora de /www)
 #   URL_APP                 ex.: https://cuidados.ahvita.com
+#   ENVIO_FTP               opcional: sim = envia por FTP. Sem ela, só gera o
+#                           pacote para envio manual (Artifacts → FileZilla)
 #   FTP_PROTOCOLO           opcional: ftps (padrão) ou ftp
 #   PUBLICAR_AUTOMATICO     opcional: sim = publica a cada envio para a main
 # Sem PUBLICAR_AUTOMATICO, um envio só TESTA; publicar exige clicar em
@@ -104,7 +106,40 @@ jobs:
           echo "privado=$(rel "$PV")" >> "$GITHUB_OUTPUT"
           echo "Pasta pública:  $(rel "$W")"
           echo "Pasta privada:  $(rel "$PV")"
+      - name: Montar pasta para envio manual (espelha o FTP)
+        env:
+          W: ${{ steps.pastas.outputs.www }}
+          PV: ${{ steps.pastas.outputs.privado }}
+        run: |
+          rm -rf envio && mkdir -p "envio/$W"
+          cp -a pacote-kinghost/www/. "envio/$W"
+          mkdir -p "envio/$PV"
+          cp -a pacote-kinghost/privado/. "envio/$PV"
+          rm -f "envio/${PV}config/configuracao.php"
+          cat > envio/COMO-ENVIAR.txt <<TXT
+          Ahvita Cuidados - versão ${GITHUB_SHA::7}
+
+          1. Descompacte este arquivo no seu computador.
+          2. Abra o FileZilla e conecte na KingHost.
+          3. Arraste as pastas daqui para a pasta inicial do FTP
+             (onde aparecem ahvita01, app, cuidados, erros).
+             Quando perguntar sobre arquivos existentes, escolha
+             "Sobrescrever" e marque "Sempre usar esta ação".
+          4. NÃO apague no servidor: ${PV}config/configuracao.php
+             nem ${PV}midias/ (fotos e áudios das pessoas).
+          5. Depois, no GitHub: Actions → Conferir publicação → Run workflow.
+          TXT
+          sed -i 's/^          //' envio/COMO-ENVIAR.txt
+          find envio -maxdepth 3 | sort | head -40
+      - name: Guardar pacote para envio manual
+        uses: actions/upload-artifact@v5
+        with:
+          name: pacote-kinghost-${{ github.run_number }}
+          path: envio/
+          include-hidden-files: true
+          retention-days: 30
       - name: Enviar app web (www)
+        if: vars.ENVIO_FTP == 'sim'
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVIDOR }}
@@ -115,6 +150,7 @@ jobs:
           server-dir: ${{ steps.pastas.outputs.www }}
           log-level: verbose
       - name: Enviar API (privado) — sem tocar em configuracao.php nem nas fotos
+        if: vars.ENVIO_FTP == 'sim'
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVIDOR }}
@@ -130,7 +166,7 @@ jobs:
             midias/**
             config/configuracao.php
       - name: Diagnóstico do FTP (só roda se o envio falhar)
-        if: failure()
+        if: failure() && vars.ENVIO_FTP == 'sim'
         env:
           S: ${{ secrets.FTP_SERVIDOR }}
           U: ${{ secrets.FTP_USUARIO }}
@@ -141,25 +177,3 @@ jobs:
         run: |
           mkdir -p /tmp/diag && cd /tmp/diag && npm init -y >/dev/null && npm install --no-audit --no-fund basic-ftp@5.2.2 >/dev/null
           NODE_PATH=/tmp/diag/node_modules node "$GITHUB_WORKSPACE/scripts/diagnostico-ftp.cjs"
-
-      - name: Conferir se está no ar
-        if: vars.URL_APP != ''
-        run: |
-          sleep 5
-          curl -fsS "${{ vars.URL_APP }}/api/v1/saude"
-
-      - name: Conferir se a pasta privada está bloqueada
-        if: vars.URL_APP != '' && vars.KINGHOST_PRIVADO_NA_AREA_PUBLICA == 'sim'
-        env:
-          W: ${{ steps.pastas.outputs.www }}
-          PV: ${{ steps.pastas.outputs.privado }}
-        run: |
-          sub="${PV#"$W"}"
-          for arq in config/configuracao.php src/bootstrap.php; do
-            codigo=$(curl -s -o /dev/null -w '%{http_code}' "${{ vars.URL_APP }}/${sub}${arq}")
-            echo "/${sub}${arq} → HTTP $codigo"
-            if [ "$codigo" != "403" ] && [ "$codigo" != "404" ]; then
-              echo "::error title=Pasta privada exposta::/${sub}${arq} respondeu $codigo. Tire o site do ar e fale com o suporte."
-              exit 1
-            fi
-          done

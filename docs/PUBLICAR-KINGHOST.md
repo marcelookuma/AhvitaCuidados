@@ -124,6 +124,20 @@ Clique no passo vermelho para ver a mensagem:
 | job **publicar** aparece como *skipped* | normal num envio comum (5.5), ou falta `KINGHOST_PASTA_WWW` |
 | job **testes** vermelho | algo no código: me mande o texto do erro |
 
+### 5.7 Envio manual pelo FileZilla (padrão enquanto o FTP pelo GitHub não grava)
+
+Na KingHost, o usuário FTP entra direto **dentro** da `/www`. Por isso as variáveis usam `/cuidados/`, não `/www/cuidados/`. Pelo GitHub (servidores fora do Brasil), o FTP entrou mas não conseguiu gravar. Enquanto isso não for resolvido com o suporte, o GitHub só **monta o pacote** e você envia pelo FileZilla.
+
+1. Actions → **Testar e publicar** → Run workflow.
+2. Quando ficar verde, abra a execução → seção **Artifacts** → baixe `pacote-kinghost-N` (.zip) e descompacte.
+3. No FileZilla, abra a pasta inicial do FTP (onde aparecem `ahvita01`, `app`, `cuidados`, `erros`) e arraste a pasta `cuidados` do pacote para lá → **Sobrescrever** → "Sempre usar esta ação".
+4. Nunca apague no servidor `config/configuracao.php` nem `midias/` da pasta privada.
+5. Actions → **Conferir publicação** → Run workflow (API no ar e pasta privada bloqueada).
+
+Para voltar ao envio direto por FTP, crie a variável `ENVIO_FTP` = `sim`.
+
+**Pasta privada temporária:** com `KINGHOST_PASTA_PRIVADO` = `/cuidados/_privado/` e `KINGHOST_PRIVADO_NA_AREA_PUBLICA` = `sim`, a pasta privada fica dentro da pública, protegida só por `.htaccess`. Use **apenas para testes, sem pessoas reais**. Antes de usar com dados reais, peça à KingHost uma pasta fora da `/www`.
+
 ## Etapa 6 — Arquivo de configuração (só no servidor, nunca no GitHub)
 
 1. Pelo FTP (FileZilla, ou o gerenciador de arquivos do painel), abra `/cuidados_privado/config/`.

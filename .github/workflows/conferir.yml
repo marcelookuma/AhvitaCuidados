@@ -1,0 +1,41 @@
+# Confere a publicação depois do envio (manual pelo FileZilla ou por FTP).
+# Actions → "Conferir publicação" → Run workflow.
+name: Conferir publicação
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: [Testar e publicar]
+    types: [completed]
+
+jobs:
+  conferir:
+    if: >-
+      vars.URL_APP != '' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.conclusion == 'success' && vars.ENVIO_FTP == 'sim'))
+    runs-on: ubuntu-24.04
+    steps:
+      - name: API respondendo
+        run: |
+          curl -fsS "${{ vars.URL_APP }}/api/v1/saude"
+          echo
+      - name: App abrindo
+        run: |
+          curl -fsS -o /dev/null -w 'index.html → HTTP %{http_code}\n' "${{ vars.URL_APP }}/"
+      - name: Pasta privada bloqueada
+        if: vars.KINGHOST_PRIVADO_NA_AREA_PUBLICA == 'sim'
+        env:
+          W: ${{ vars.KINGHOST_PASTA_WWW }}
+          PV: ${{ vars.KINGHOST_PASTA_PRIVADO }}
+        run: |
+          rel() { local x="${1#/}"; x="${x%/}"; echo "$x/"; }
+          W=$(rel "$W"); PV=$(rel "$PV"); sub="${PV#"$W"}"
+          for arq in config/configuracao.php config/configuracao.exemplo.php src/bootstrap.php db/001_schema.sql; do
+            codigo=$(curl -s -o /dev/null -w '%{http_code}' "${{ vars.URL_APP }}/${sub}${arq}")
+            echo "/${sub}${arq} → HTTP $codigo"
+            if [ "$codigo" != "403" ] && [ "$codigo" != "404" ]; then
+              echo "::error title=Pasta privada exposta::/${sub}${arq} respondeu $codigo. Tire o site do ar e fale com o suporte."
+              exit 1
+            fi
+          done

@@ -5,3 +5,4 @@ api/config/configuracao.php
 api/midias/
 api/midias-teste/
 *.log
+envio/
