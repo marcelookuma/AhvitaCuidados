@@ -1,0 +1,49 @@
+/**
+ * Antes de enviar: confere se as pastas configuradas batem com o que o FTP mostra.
+ * Evita repetir o erro de 22/10/2026: o FTP da KingHost já abre DENTRO da pasta
+ * pública, e "www/" acabou criado como www/www (com a pasta privada exposta).
+ */
+const ftp = require('basic-ftp');
+const { S, U, P, PROTO, W, PV } = process.env;
+
+function erro(msg) {
+  console.log(`::error title=Pastas do FTP::${msg}`);
+  process.exit(1);
+}
+
+(async () => {
+  const c = new ftp.Client(30000);
+  try {
+    await c.access({
+      host: String(S).split(':')[0], port: Number(String(S).split(':')[1] || 21), user: U, password: P,
+      secure: (PROTO || 'ftps') === 'ftps', secureOptions: { rejectUnauthorized: false },
+    });
+  } catch (e) {
+    erro(`Não conectou ao FTP: ${e.message}. Confira o bloqueio de IP internacional no painel.`);
+  }
+  let nomes = [];
+  try {
+    nomes = (await c.list('')).map((i) => `${i.isDirectory ? '[pasta]' : ''}${i.name}`);
+  } catch (e) {
+    erro(`Não listou a pasta inicial do FTP: ${e.message}`);
+  }
+  c.close();
+  const pastas = nomes.filter((n) => n.startsWith('[pasta]')).map((n) => n.slice(7));
+  console.log(`Pasta inicial do FTP: ${nomes.join(', ') || '(vazia)'}`);
+  const primeira = (W || './').replace(/^\.\//, '').split('/')[0];
+  const temIndex = nomes.some((n) => /^index\.(html?|php)$/i.test(n));
+
+  if (primeira === '') {
+    // KINGHOST_PASTA_WWW = "/": o FTP abre na própria pasta pública
+    if (pastas.includes('www') || pastas.includes('public_html')) {
+      erro(`O FTP mostra a pasta "${pastas.includes('www') ? 'www' : 'public_html'}": a pasta pública é ela. Use KINGHOST_PASTA_WWW=/${pastas.includes('www') ? 'www' : 'public_html'}/ e uma pasta privada fora dela.`);
+    }
+    console.log('OK: o FTP abre dentro da pasta pública (KINGHOST_PASTA_WWW=/).');
+  } else if (!pastas.includes(primeira)) {
+    erro(`A pasta "${primeira}" (KINGHOST_PASTA_WWW=${W}) não existe na pasta inicial do FTP` +
+      (temIndex ? ' e ali já há um index: o FTP abre DENTRO da pasta pública. Use KINGHOST_PASTA_WWW=/ .' : '. Confira o nome no FileZilla.'));
+  } else {
+    console.log(`OK: a pasta pública "${primeira}" existe na pasta inicial do FTP.`);
+  }
+  console.log(`Pasta privada configurada: ${PV}`);
+})();

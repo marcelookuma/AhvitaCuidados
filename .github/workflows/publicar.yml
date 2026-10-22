@@ -2,8 +2,10 @@
 # Segredos (Settings → Secrets and variables → Actions → Secrets):
 #   FTP_SERVIDOR, FTP_USUARIO, FTP_SENHA
 # Variáveis (mesma tela → aba Variables):
-#   KINGHOST_PASTA_WWW      ex.: /www/               (pasta pública do domínio cuidados.ahvita.com)
-#   KINGHOST_PASTA_PRIVADO  ex.: /cuidados_privado/  (raiz do FTP, fora de /www)
+#   KINGHOST_PASTA_WWW      / quando o FTP já abre na pasta pública (caso da KingHost);
+#                           /www/ quando o FTP mostra a pasta www
+#   KINGHOST_PASTA_PRIVADO  ex.: /cuidados_privado/ (de preferência fora da pública)
+#   KINGHOST_PRIVADO_NA_AREA_PUBLICA  sim = aceita a pasta privada dentro da pública
 #   URL_APP                 ex.: https://cuidados.ahvita.com
 #   ENVIO_FTP               opcional: sim = envia por FTP. Sem ela, só gera o
 #                           pacote para envio manual (Artifacts → FileZilla)
@@ -105,12 +107,13 @@ jobs:
           W: ${{ vars.KINGHOST_PASTA_WWW }}
           PV: ${{ vars.KINGHOST_PASTA_PRIVADO }}
         run: |
-          rel() { local x="${1#/}"; x="${x%/}"; echo "$x/"; }
+          # "/" (o FTP já abre na pasta pública) vira "./"
+          rel() { local x="${1#/}"; x="${x%/}"; if [ -z "$x" ]; then echo "./"; else echo "$x/"; fi; }
           echo "www=$(rel "$W")" >> "$GITHUB_OUTPUT"
           echo "privado=$(rel "$PV")" >> "$GITHUB_OUTPUT"
           w=$(rel "$W"); pv=$(rel "$PV")
           # Pasta privada dentro da pública: caminho dela a partir da pública (ex.: _privado/)
-          case "$pv" in "$w"*) echo "sub=${pv#"$w"}" >> "$GITHUB_OUTPUT" ;; esac
+          if [ "$w" != "./" ]; then case "$pv" in "$w"*) echo "sub=${pv#"$w"}" >> "$GITHUB_OUTPUT" ;; esac; fi
           echo "Pasta pública:  $(rel "$W")"
           echo "Pasta privada:  $(rel "$PV")"
       - name: Montar pasta para envio manual (espelha o FTP)
@@ -146,6 +149,19 @@ jobs:
           path: envio/
           include-hidden-files: true
           retention-days: 30
+      - name: Conferir as pastas no FTP antes de enviar
+        if: vars.ENVIO_FTP == 'sim'
+        env:
+          S: ${{ secrets.FTP_SERVIDOR }}
+          U: ${{ secrets.FTP_USUARIO }}
+          P: ${{ secrets.FTP_SENHA }}
+          PROTO: ${{ vars.FTP_PROTOCOLO || 'ftps' }}
+          W: ${{ steps.pastas.outputs.www }}
+          PV: ${{ steps.pastas.outputs.privado }}
+        run: |
+          mkdir -p /tmp/diag && cd /tmp/diag && npm init -y >/dev/null && npm install --no-audit --no-fund basic-ftp@5.2.2 >/dev/null
+          NODE_PATH=/tmp/diag/node_modules node "$GITHUB_WORKSPACE/scripts/conferir-pastas-ftp.cjs"
+          sleep 60   # a KingHost recusa uma nova conexão logo em seguida
       # A KingHost recusa uma segunda conexão logo depois da primeira. Com a pasta
       # privada dentro da pública, tudo vai numa conexão só.
       - name: Enviar app + API numa conexão só (pasta privada dentro da pública)
@@ -194,5 +210,5 @@ jobs:
           PROTO: ${{ vars.FTP_PROTOCOLO || 'ftps' }}
         run: |
           sleep 60
-          mkdir -p /tmp/diag && cd /tmp/diag && npm init -y >/dev/null && npm install --no-audit --no-fund basic-ftp@5.2.2 >/dev/null
+          [ -d /tmp/diag/node_modules/basic-ftp ] || (mkdir -p /tmp/diag && cd /tmp/diag && npm init -y >/dev/null && npm install --no-audit --no-fund basic-ftp@5.2.2 >/dev/null)
           NODE_PATH=/tmp/diag/node_modules node "$GITHUB_WORKSPACE/scripts/diagnostico-ftp.cjs"

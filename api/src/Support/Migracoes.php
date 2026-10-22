@@ -13,7 +13,8 @@ final class Migracoes
     /** @return list<string> versões aplicadas agora */
     public static function aplicar(string $pasta): array
     {
-        $arquivos = glob(rtrim($pasta, '/') . '/0*.sql') ?: [];
+        // 0NN_nome.sql (repositório) ou 0NN_nome.sql.php (servidor: começa com um bloqueio 404)
+        $arquivos = array_merge(glob(rtrim($pasta, '/') . '/0*.sql') ?: [], glob(rtrim($pasta, '/') . '/0*.sql.php') ?: []);
         sort($arquivos);
         $ja = [];
         try {
@@ -25,7 +26,10 @@ final class Migracoes
         foreach ($arquivos as $arq) {
             $versao = substr(basename($arq), 0, 3);
             if (in_array($versao, $ja, true)) continue;
-            foreach (preg_split('/;\s*\n/', (string)file_get_contents($arq)) ?: [] as $cmd) {
+            $ja[] = $versao;
+            $sql = (string)file_get_contents($arq);
+            if (str_starts_with($sql, '<?php')) $sql = substr($sql, (int)strpos($sql, "?>\n") + 3);
+            foreach (preg_split('/;\s*\n/', $sql) ?: [] as $cmd) {
                 $cmd = trim(preg_replace('/^\s*--.*$/m', '', $cmd) ?? '');
                 if ($cmd !== '') Bd::pdo()->exec($cmd);
             }

@@ -11,7 +11,7 @@
  *   privado/    → FORA da área pública (ex.: /cuidados_privado/ na raiz do FTP)
  *     src/, bin/, config/configuracao.exemplo.php, db/, midias/
  */
-import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -40,7 +40,7 @@ const pastaWww = process.env.KINGHOST_PASTA_WWW || '/www/';
 const pastaPrivado = process.env.KINGHOST_PASTA_PRIVADO || '/privado/';
 const absWww = posix.resolve('/', pastaWww);
 const absPrivado = posix.resolve('/', pastaPrivado);
-const naAreaPublica = absPrivado === absWww || absPrivado.startsWith(absWww + '/');
+const naAreaPublica = absWww === '/' || absPrivado === absWww || absPrivado.startsWith(absWww + '/');
 const permitirNaAreaPublica = process.env.KINGHOST_PRIVADO_NA_AREA_PUBLICA === 'sim';
 if (absPrivado === absWww) {
   console.error('✗ A pasta privada não pode ser a própria pasta pública.');
@@ -57,7 +57,7 @@ const bloqueioPrivado = naAreaPublica
   RewriteRule ^${posix.relative(absWww, absPrivado).replace(/[.]/g, '\\.')}(/|$) - [F,L]
 `
   : '';
-if (naAreaPublica) console.warn(`⚠ Pasta privada DENTRO da área pública (${absPrivado}), protegida por .htaccess. Solução temporária.`);
+if (naAreaPublica) console.warn(`⚠ Pasta privada DENTRO da área pública (${absPrivado}), protegida por index.php de bloqueio, arquivos só .php e .htaccess. Peça à KingHost uma pasta fora da área pública.`);
 const relativo = posix.relative(posix.join(absWww, 'api'), absPrivado);
 writeFileSync(join(www, 'api/privado.php'), `<?php\n// Gerado pelo empacotador: caminho da pasta privada a partir daqui.\nreturn '${relativo}';\n`);
 console.log(`· pasta privada: ${absPrivado} (a partir de www/api: ${relativo})`);
@@ -108,5 +108,25 @@ cpSync(join(raiz, 'db'), join(privado, 'db'), { recursive: true });
 // Se a hospedagem não permitir pasta fora de www, este .htaccess bloqueia o acesso web à pasta privado.
 writeFileSync(join(privado, '.htaccess'), 'Require all denied\n');
 writeFileSync(join(privado, 'midias/.htaccess'), 'Require all denied\n');
+
+// Proteção que não depende de .htaccess (o nginx o ignora): na pasta privada só
+// ficam arquivos .php. Os .sql viram .sql.php com um trecho inicial que responde 404,
+// e cada pasta ganha um index.php que responde 404 (sem listagem de arquivos).
+const BLOQUEIO = '<?php http_response_code(404); exit; ?>\n';
+function proteger(pasta) {
+  writeFileSync(join(pasta, 'index.php'), BLOQUEIO);
+  for (const nome of readdirSync(pasta)) {
+    const c = join(pasta, nome);
+    if (statSync(c).isDirectory()) { proteger(c); continue; }
+    if (nome.endsWith('.sql')) {
+      writeFileSync(c + '.php', BLOQUEIO + readFileSync(c, 'utf8'));
+      rmSync(c);
+    }
+  }
+}
+proteger(privado);
+for (const f of (function listar(d) { return readdirSync(d).flatMap((n) => statSync(join(d, n)).isDirectory() ? listar(join(d, n)) : [join(d, n)]); })(privado)) {
+  if (!f.endsWith('.php') && !f.endsWith('.htaccess')) { console.error(`✗ Arquivo não-PHP na pasta privada: ${f}`); process.exit(1); }
+}
 cpSync(join(raiz, 'docs/PUBLICAR-KINGHOST.md'), join(saida, 'LEIA-ME.md'));
 console.log('✓ Pacote pronto em pacote-kinghost/ (www/ e privado/)');
