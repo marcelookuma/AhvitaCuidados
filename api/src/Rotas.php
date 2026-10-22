@@ -19,7 +19,7 @@ final class Rotas
 {
     public static function registrar(Roteador $r): void
     {
-        $r->add('GET', '/saude', fn() => \Cuidados\Http\Resposta::json(['ok' => true, 'versao' => '1.0.0']), true);
+        $r->add('GET', '/saude', fn() => self::saude(), true);
         $r->add('POST', '/sistema/tarefas', fn($req) => self::tarefas($req), true);
 
         // Acesso
@@ -109,5 +109,24 @@ final class Rotas
             throw \Cuidados\Support\ErroHttp::naoEncontrado();
         }
         return \Cuidados\Http\Resposta::json(['ok' => true] + \Cuidados\Support\Tarefas::executar());
+    }
+
+    /** Diagnóstico da instalação, sem dados de pessoas. */
+    public static function saude(): \Cuidados\Http\Resposta
+    {
+        $banco = 'sem_configuracao';
+        if (\Cuidados\Support\Config::configurado()) {
+            try {
+                \Cuidados\Support\Bd::pdo()->query('SELECT 1');
+                $banco = 'ok';
+            } catch (\Throwable $e) {
+                error_log('[cuidados] saude: ' . $e->getMessage());
+                $banco = 'erro';
+            }
+        }
+        return \Cuidados\Http\Resposta::json([
+            'ok' => true, 'versao' => '1.0.0', 'php' => PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION,
+            'configuracao' => \Cuidados\Support\Config::configurado(), 'banco' => $banco,
+        ]);
     }
 }

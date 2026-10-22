@@ -12,3 +12,8 @@ Options -Indexes
 <FilesMatch "\.(env|ini|log|sql|md)$">
   Require all denied
 </FilesMatch>
+# Erros do servidor em texto: sem isto, a página de erro cai na rota do app e mostra a tela de entrar
+ErrorDocument 500 "Erro 500 no servidor (PHP). Confira o log de erros da hospedagem."
+ErrorDocument 502 "Erro 502: o PHP do site nao respondeu."
+ErrorDocument 503 "Erro 503: o PHP do site esta indisponivel ou demorou demais."
+ErrorDocument 504 "Erro 504: o PHP do site demorou demais."

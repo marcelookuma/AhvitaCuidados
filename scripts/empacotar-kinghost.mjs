@@ -72,6 +72,11 @@ const regraHost = hostOficial ? `  # Só pelo endereço oficial
 ` : '';
 writeFileSync(join(www, '.htaccess'), `# Ahvita Cuidados — app web
 Options -Indexes
+# Erros do servidor em texto (sem isto, a página de erro cai na rota do app)
+ErrorDocument 500 "Erro 500 no servidor (PHP). Confira o log de erros da hospedagem."
+ErrorDocument 502 "Erro 502: o PHP do site nao respondeu."
+ErrorDocument 503 "Erro 503: o PHP do site esta indisponivel ou demorou demais."
+ErrorDocument 504 "Erro 504: o PHP do site demorou demais."
 <IfModule mod_rewrite.c>
   RewriteEngine On
 ${bloqueioPrivado}${regraHost}  # Sempre HTTPS (dados de saúde)

@@ -36,6 +36,7 @@ final class Tarefas
     /** Roda se já passou o intervalo. Nunca derruba a requisição. */
     public static function seVencidas(): void
     {
+        if (!Config::configurado()) return; // ainda sem configuracao.php
         if (!filter_var(Config::get('tarefas.automaticas', true), FILTER_VALIDATE_BOOL)) return;
         $marca = self::arquivoMarca();
         $ultima = is_file($marca) ? (int)@filemtime($marca) : 0;

@@ -12,6 +12,7 @@ final class Config
 {
     /** @var array<string,mixed> */
     private static array $valores = [];
+    private static bool $temArquivo = false;
 
     private const PADRAO = [
         'ambiente' => 'producao',            // producao | teste
@@ -41,7 +42,8 @@ final class Config
     public static function carregar(?string $arquivo = null): void
     {
         $arquivo ??= getenv('CUIDADOS_CONFIG') ?: CUIDADOS_RAIZ . '/config/configuracao.php';
-        $dados = is_file($arquivo) ? (require $arquivo) : [];
+        self::$temArquivo = is_file($arquivo);
+        $dados = self::$temArquivo ? (require $arquivo) : [];
         self::$valores = array_merge(self::PADRAO, self::achatar(is_array($dados) ? $dados : []));
         foreach (array_keys(self::$valores) as $chave) {
             $env = getenv(strtoupper(str_replace('.', '_', $chave)));
@@ -54,6 +56,12 @@ final class Config
         if (self::$valores['midias.pasta'] === null) {
             self::$valores['midias.pasta'] = CUIDADOS_RAIZ . '/midias';
         }
+    }
+
+    /** Existe configuracao.php (ou o banco veio por variável de ambiente, como no CI)? */
+    public static function configurado(): bool
+    {
+        return self::$temArquivo || (getenv('DB_HOST') !== false && getenv('DB_HOST') !== '');
     }
 
     public static function get(string $chave, mixed $padrao = null): mixed
