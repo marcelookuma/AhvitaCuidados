@@ -24,7 +24,7 @@ concurrency:
 
 jobs:
   testes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       mariadb:
         image: mariadb:10.11
@@ -48,12 +48,12 @@ jobs:
       CODIGO_TESTE_FIXO: '123456'
       MIDIAS_PASTA: ${{ github.workspace }}/midias-teste
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.1'
           extensions: pdo_mysql, curl, fileinfo, mbstring
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 20
           cache: npm
@@ -77,10 +77,10 @@ jobs:
     if: >-
       github.ref == 'refs/heads/main' && vars.KINGHOST_PASTA_WWW != '' &&
       (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && vars.PUBLICAR_AUTOMATICO == 'sim'))
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 20
           cache: npm
@@ -101,6 +101,7 @@ jobs:
           protocol: ${{ vars.FTP_PROTOCOLO || 'ftps' }}
           local-dir: ./pacote-kinghost/www/
           server-dir: ${{ vars.KINGHOST_PASTA_WWW }}
+          log-level: verbose
       - name: Enviar API (privado) — sem tocar em configuracao.php nem nas fotos
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -110,11 +111,38 @@ jobs:
           protocol: ${{ vars.FTP_PROTOCOLO || 'ftps' }}
           local-dir: ./pacote-kinghost/privado/
           server-dir: ${{ vars.KINGHOST_PASTA_PRIVADO }}
+          log-level: verbose
           exclude: |
             **/.git*
             **/.git*/**
             midias/**
             config/configuracao.php
+      - name: Diagnóstico do FTP (só roda se o envio falhar)
+        if: failure()
+        env:
+          S: ${{ secrets.FTP_SERVIDOR }}
+          U: ${{ secrets.FTP_USUARIO }}
+          P: ${{ secrets.FTP_SENHA }}
+          W: ${{ vars.KINGHOST_PASTA_WWW }}
+          PV: ${{ vars.KINGHOST_PASTA_PRIVADO }}
+          PROTO: ${{ vars.FTP_PROTOCOLO || 'ftps' }}
+        run: |
+          TLS=""; [ "$PROTO" = "ftps" ] && TLS="--ssl-reqd"
+          listar() { curl -sS -m 30 $TLS --list-only -u "$U:$P" "ftp://$S$1" 2>&1 | sed 's/^/   /' || true; }
+          testar() {
+            if curl -sS -m 30 $TLS -u "$U:$P" "ftp://$S/" -Q "MKD ${1}teste-github" -Q "RMD ${1}teste-github" -o /dev/null 2>/tmp/e; then
+              echo "   OK: o usuário FTP consegue criar pastas em $1"
+            else
+              echo "   FALHOU em $1: $(cat /tmp/e)"
+            fi
+          }
+          echo "== O que o usuário FTP vê na raiz (/) =="; listar "/"
+          echo "== Conteúdo de /www/ =="; listar "/www/"
+          echo "== Conteúdo de $W =="; listar "$W"
+          echo "== Teste de escrita na pasta pública =="; testar "$W"
+          echo "== Teste de escrita na raiz (onde fica a pasta privada) =="; testar "/"
+          echo "Copie tudo acima (a partir de '== O que o usuário FTP vê') e mande para o Claude."
+
       - name: Conferir se está no ar
         if: vars.URL_APP != ''
         run: |
