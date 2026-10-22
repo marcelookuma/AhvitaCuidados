@@ -18,11 +18,13 @@ jobs:
     steps:
       - name: API respondendo
         run: |
-          for u in /api/v1/saude "/api/index.php" "/api/privado.php"; do
-            echo "== $u"
-            curl -sS -o /tmp/r.txt -w 'HTTP %{http_code} | %{content_type}\n' "${{ vars.URL_APP }}$u" || true
-            head -c 400 /tmp/r.txt; echo
+          : > /tmp/resumo.txt
+          for u in /api/v1/saude /api/index.php /api/privado.php /api/.htaccess /c; do
+            linha=$(curl -sS -o /tmp/r.txt -w "$u → HTTP %{http_code} %{content_type}" "${{ vars.URL_APP }}$u" 2>&1 || true)
+            corpo=$(head -c 160 /tmp/r.txt | tr -d '\r' | tr '\n' ' ')
+            echo "$linha | $corpo" | tee -a /tmp/resumo.txt
           done
+          echo "::notice title=Resposta da API::$(sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g' /tmp/resumo.txt)"
           curl -fsS "${{ vars.URL_APP }}/api/v1/saude"
           echo
       - name: App abrindo
