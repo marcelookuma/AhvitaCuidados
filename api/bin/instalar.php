@@ -1,6 +1,9 @@
 <?php
 declare(strict_types=1);
 
+// Só pela linha de comando: nunca pela web (a pasta privada pode estar sob nginx).
+if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
+
 /**
  * Cria/atualiza as tabelas (alternativa ao phpMyAdmin).
  *   php bin/instalar.php            → aplica db/*.sql que ainda não foram aplicados

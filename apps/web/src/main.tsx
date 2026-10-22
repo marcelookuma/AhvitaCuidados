@@ -3,7 +3,10 @@ import { createRoot } from 'react-dom/client';
 import { App } from './app';
 import { ProvedorSessao } from './sessao';
 import { ProvedorLanche } from './componentes/ui';
+import { migrarRotaAntiga } from './rota';
 import './estilos.css';
+
+migrarRotaAntiga();
 
 createRoot(document.getElementById('raiz')!).render(
   <StrictMode>

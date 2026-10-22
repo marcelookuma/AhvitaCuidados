@@ -68,6 +68,10 @@ jobs:
           (cd api && php -S 127.0.0.1:8099 dev-router.php > /tmp/servidor.log 2>&1 &)
           sleep 2
           php api/tests/fluxo.php http://127.0.0.1:8099
+          # De novo, com banco limpo, sem reescrita de URL (como no nginx da KingHost)
+          mysql -h127.0.0.1 -uroot -praiz -e "DROP DATABASE cuidados; CREATE DATABASE cuidados CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; GRANT ALL ON cuidados.* TO 'cuidados'@'%';"
+          php api/bin/instalar.php
+          php api/tests/fluxo.php http://127.0.0.1:8099 r
           php api/bin/auditoria.php
       - name: Vocabulário, tipos e build do app
         run: |

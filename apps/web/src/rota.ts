@@ -1,10 +1,39 @@
 import { useEffect, useState } from 'react';
 
-/** Roteador mínimo (sem dependência): /c/p/:id, /g/:id/hoje… */
+/**
+ * Roteador mínimo (sem dependência): /c/p/:id, /g/:id/hoje…
+ * As rotas ficam depois do "#" (ex.: /#/c/p/123). Assim o servidor só precisa
+ * entregar o index.html: a KingHost serve por nginx, que ignora o .htaccess.
+ */
+function rotaCompleta(): string {
+  const h = location.hash.slice(1);
+  return h.startsWith('/') ? h : '/';
+}
+
+/** Caminho atual, sem a parte "?…". */
+export function caminhoAtual(): string {
+  return rotaCompleta().split('?')[0] || '/';
+}
+
+/** Parâmetros "?…" da rota atual (ex.: /e/1/conversas?c=2). */
+export function busca(): URLSearchParams {
+  const r = rotaCompleta();
+  const i = r.indexOf('?');
+  return new URLSearchParams(i >= 0 ? r.slice(i + 1) : '');
+}
+
+/** Links antigos sem "#" (ex.: /convite/ABC) passam para /#/convite/ABC. */
+export function migrarRotaAntiga() {
+  const p = location.pathname;
+  if (p !== '/' && p !== '/index.html' && !location.hash) {
+    history.replaceState(null, '', '/#' + p + location.search);
+  }
+}
+
 export function navegar(caminho: string, substituir = false) {
-  if (caminho === location.pathname) return;
-  if (substituir) history.replaceState(null, '', caminho);
-  else history.pushState(null, '', caminho);
+  if (caminho === rotaCompleta()) return;
+  if (substituir) history.replaceState(null, '', '#' + caminho);
+  else history.pushState(null, '', '#' + caminho);
   window.dispatchEvent(new Event('cuidados:rota'));
   window.scrollTo(0, 0);
 }
@@ -15,13 +44,15 @@ export function voltar(padrao: string) {
 }
 
 export function useCaminho(): string {
-  const [c, setC] = useState(location.pathname);
+  const [c, setC] = useState(caminhoAtual());
   useEffect(() => {
-    const f = () => setC(location.pathname);
+    const f = () => setC(caminhoAtual());
     window.addEventListener('popstate', f);
+    window.addEventListener('hashchange', f);
     window.addEventListener('cuidados:rota', f);
     return () => {
       window.removeEventListener('popstate', f);
+      window.removeEventListener('hashchange', f);
       window.removeEventListener('cuidados:rota', f);
     };
   }, []);

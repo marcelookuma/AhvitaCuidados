@@ -271,7 +271,7 @@ final class ConvitesControlador extends Controlador
     /** @param array<string,mixed> $c @return array<string,mixed> */
     private function saida(array $c, string $alvo): array
     {
-        $link = rtrim((string)Config::get('url_app'), '/') . '/convite/' . $c['codigo'];
+        $link = rtrim((string)Config::get('url_app'), '/') . '/#/convite/' . $c['codigo'];
         $texto = "Olá, {$c['destino_nome']}! Convidei você para o Ahvita Cuidados ($alvo). Toque para entrar: $link — código {$c['codigo']}";
         return [
             'id' => $c['id'],

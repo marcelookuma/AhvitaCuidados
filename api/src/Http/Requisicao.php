@@ -32,7 +32,10 @@ final class Requisicao
     public static function doServidor(string $base): self
     {
         $uri = (string)parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
-        if ($base !== '' && str_starts_with($uri, $base)) {
+        if (isset($_GET['r']) && is_string($_GET['r'])) {
+            // /api/index.php?r=/saude: funciona em qualquer servidor (nginx sem reescrita de URL)
+            $uri = (string)parse_url($_GET['r'], PHP_URL_PATH);
+        } elseif ($base !== '' && str_starts_with($uri, $base)) {
             $uri = substr($uri, strlen($base));
         }
         $uri = '/' . trim($uri, '/');

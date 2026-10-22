@@ -102,7 +102,7 @@ Crie como **variável do repositório** (não de "environment"): o fluxo só enx
    - **publicar** (≈ 3–8 min na primeira vez, pois envia todos os arquivos; depois só o que mudou).
 3. Tudo verde = arquivos na KingHost. Siga para a Etapa 6 (arquivo de configuração).
 
-O passo "Conferir se está no ar" chama `/api/v1/saude`, que responde mesmo antes do `configuracao.php` existir. Se ele passou, o servidor está servindo a API corretamente.
+O passo "Conferir se está no ar" chama `/api/index.php?r=/saude`, que responde mesmo antes do `configuracao.php` existir. Se ele passou, o servidor está servindo a API corretamente.
 
 ### 5.5 Como funcionam as próximas publicações
 - **Padrão (recomendado na validação):** cada envio para a `main` **só testa**. Para colocar no ar, você clica em **Run workflow** — é a sua aprovação. (A aprovação automática do GitHub, "required reviewers", não está disponível em repositório privado nos planos Free, Pro e Team.)
@@ -137,6 +137,17 @@ Na KingHost, o usuário FTP entra direto **dentro** da `/www`. Por isso as vari�
 Para voltar ao envio direto por FTP, crie a variável `ENVIO_FTP` = `sim`.
 
 **Pasta privada temporária:** com `KINGHOST_PASTA_PRIVADO` = `/cuidados/_privado/` e `KINGHOST_PRIVADO_NA_AREA_PUBLICA` = `sim`, a pasta privada fica dentro da pública, protegida só por `.htaccess`. Use **apenas para testes, sem pessoas reais**. Antes de usar com dados reais, peça à KingHost uma pasta fora da `/www`.
+
+### 5.8 A KingHost serve por nginx (o .htaccess não vale)
+
+O erro "404 Not Found — nginx" mostrou que o domínio é servido por **nginx**, que ignora os arquivos `.htaccess`. Por isso o app foi ajustado para não depender deles:
+
+- **API:** o endereço é `https://cuidados.ahvita.com/api/index.php?r=/saude` (e assim por diante). O endereço `/api/v1/...` continua valendo onde houver Apache.
+- **Telas do app:** as rotas ficam depois do `#` (ex.: `/#/c`). Links antigos sem `#` são convertidos sozinhos; o link de convite já sai com `#`.
+- **Fotos e áudios:** são gravados como `.php` com um bloqueio no início. Se alguém abrir o endereço do arquivo, recebe 404.
+- **Scripts de `bin/`:** só rodam pela linha de comando, nunca pela web.
+
+**Limite:** sem `.htaccess`, os arquivos comuns da pasta `_privado` (ex.: `db/001_schema.sql`) podem ser abertos pela web. O `configuracao.php` não aparece (o servidor executa e não mostra nada), mas **antes de dados reais a pasta privada precisa ficar fora da `/www`**. Peça ao suporte da KingHost.
 
 ## Etapa 6 — Arquivo de configuração (só no servidor, nunca no GitHub)
 
@@ -181,7 +192,7 @@ return [
 
 O app tem tarefas periódicas: atualizar o banco depois de cada publicação, avisar quando um atendimento está sem confirmação e limpar códigos e sessões vencidos.
 
-**Sem cron (padrão, plano de revenda da KingHost):** a própria API roda essas tarefas na primeira requisição depois de 5 minutos. Com o app aberto, ele faz requisições a cada poucos segundos, então na prática roda sozinho. Na **primeira** visita (ex.: abrir `https://cuidados.ahvita.com/api/v1/saude`), a API cria as 25 tabelas do banco.
+**Sem cron (padrão, plano de revenda da KingHost):** a própria API roda essas tarefas na primeira requisição depois de 5 minutos. Com o app aberto, ele faz requisições a cada poucos segundos, então na prática roda sozinho. Na **primeira** visita (ex.: abrir `https://cuidados.ahvita.com/api/index.php?r=/saude`), a API cria as 25 tabelas do banco.
 
 Limite: se ninguém abrir o app por horas, os alertas só são calculados na próxima abertura. Os painéis do gestor e da empresa também conferem a cobertura quando são abertos.
 
@@ -198,7 +209,7 @@ A chamada não leva nem devolve dados de pessoas (só quantos alertas foram gera
 
 | Teste | Esperado |
 |---|---|
-| `https://cuidados.ahvita.com/api/v1/saude` | `{"ok":true,"versao":"1.0.0"}` |
+| `https://cuidados.ahvita.com/api/index.php?r=/saude` | `{"ok":true,"versao":"1.0.0"}` |
 | `https://cuidados.ahvita.com/` | tela **Entrar** do app |
 | `http://cuidados.ahvita.com/` (sem s) | redireciona para `https://` |
 | `https://ahvita.com/cuidados/` | redireciona para `https://cuidados.ahvita.com/` |
@@ -213,7 +224,7 @@ Depois do teste, exclua a pessoa de teste em **Cadastro e privacidade**.
 | Sintoma | Causa provável |
 |---|---|
 | 403 "Acesso negado" no app | arquivos na pasta errada, faltou o `.htaccess` (arquivo oculto: no FileZilla, "Servidor → Forçar exibir arquivos ocultos"), ou uma regra do `/www/.htaccess` do site principal bloqueando a subpasta |
-| Página em branco ou erro 500 em `/api/v1/saude` | PHP abaixo de 8.1, ou `configuracao.php` com erro de digitação (vírgula, aspas) |
+| Página em branco ou erro 500 em `/api/index.php?r=/saude` | PHP abaixo de 8.1, ou `configuracao.php` com erro de digitação (vírgula, aspas) |
 | `{"erro":{"codigo":"banco"…}}` | dados do banco errados no `configuracao.php` (confira o host do painel) |
 | Código não chega por e-mail | dados SMTP errados; teste a conta no webmail; olhe o spam |
 | Login volta para "Entrar" | site sem HTTPS (cookie seguro) |
@@ -230,6 +241,6 @@ Em um banco e hospedagem separados: `'ambiente' => 'teste'`, `'codigo' => ['cana
 O arquivo `.github/workflows/publicar.yml` faz, a cada envio para a branch `main`:
 1. **Testa**: sintaxe PHP, banco MariaDB de teste, as 91 verificações da API, a trilha de auditoria, o vocabulário e o build do app.
 2. **Publica** quando você clica em Run workflow (ou a cada envio, se `PUBLICAR_AUTOMATICO` = `sim`), só se os testes passarem: envia `www/` e `privado/` por FTP, sem tocar em `config/configuracao.php` nem em `midias/` da pasta privada.
-3. **Confere** se `URL_APP/api/v1/saude` responde.
+3. **Confere** se `URL_APP/api/index.php?r=/saude` responde.
 
 As migrações do banco (`db/002_*.sql` em diante) são aplicadas pelo cron em até 5 minutos depois da publicação.

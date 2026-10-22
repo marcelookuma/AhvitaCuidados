@@ -45,9 +45,15 @@ final class Resposta
         }
         if ($this->arquivo !== null) {
             header('Content-Type: ' . $this->tipoArquivo);
-            header('Content-Length: ' . (string)filesize($this->arquivo));
+            $pular = \Cuidados\Support\ArquivoProtegido::deslocamento($this->arquivo);
+            header('Content-Length: ' . (string)(filesize($this->arquivo) - $pular));
             header('Content-Disposition: inline');
-            readfile($this->arquivo);
+            $h = fopen($this->arquivo, 'rb');
+            if ($h !== false) {
+                fseek($h, $pular);
+                fpassthru($h);
+                fclose($h);
+            }
             return;
         }
         if ($this->status === 204) {

@@ -23,12 +23,15 @@ export class ErroApi extends Error {
 }
 
 export interface OpcoesApi {
-  base: string;                         // ex.: https://cuidados.ahvita.com/api/v1
+  base: string;                         // ex.: https://cuidados.ahvita.com/api/index.php?r=  (ou .../api/v1 com reescrita)
   token?: () => string | null;          // app móvel: Bearer
   aoPerderSessao?: () => void;
 }
 
 export function criarApi(op: OpcoesApi) {
+  /** Com base "…/index.php?r=", o "?" do caminho vira "&" (servidor sem reescrita de URL, ex.: nginx). */
+  const url = (caminho: string) => (op.base.includes('?') ? op.base + caminho.replace('?', '&') : op.base + caminho);
+
   async function chamar<T>(metodo: string, caminho: string, corpo?: unknown, form?: FormData): Promise<T> {
     const cab: Record<string, string> = { 'X-Cuidados': '1', Accept: 'application/json' };
     const tk = op.token?.();
@@ -36,7 +39,7 @@ export function criarApi(op: OpcoesApi) {
     if (corpo !== undefined) cab['Content-Type'] = 'application/json';
     let resp: Response;
     try {
-      resp = await fetch(op.base + caminho, {
+      resp = await fetch(url(caminho), {
         method: metodo,
         headers: cab,
         credentials: 'include',
@@ -151,7 +154,7 @@ export function criarApi(op: OpcoesApi) {
       if (alvo.conversa_id) f.append('conversa_id', alvo.conversa_id);
       return chamar<{ id: string; tipo: 'foto' | 'audio' }>('POST', '/midias', undefined, f);
     },
-    urlMidia: (id: string) => `${op.base}/midias/${id}`,
+    urlMidia: (id: string) => url(`/midias/${id}`),
   };
 }
 

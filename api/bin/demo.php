@@ -1,6 +1,9 @@
 <?php
 declare(strict_types=1);
 
+// Só pela linha de comando: nunca pela web (a pasta privada pode estar sob nginx).
+if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
+
 /**
  * Dados FICTÍCIOS para demonstração (nunca em produção com pessoas reais).
  *   php bin/demo.php

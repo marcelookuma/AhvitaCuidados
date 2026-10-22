@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { MODALIDADES, hora, isoLocal, periodo, reais, telefone, type ConviteCriado } from '@cuidados/core';
 import { api } from '../../servicos';
-import { casar, navegar, useCaminho } from '../../rota';
+import { busca, casar, navegar, useCaminho } from '../../rota';
 import { useSessao } from '../../sessao';
 import { useCarregar, useRepetir } from '../../hooks';
 import { Campo, Carregando, ErroGeral, Vazio, useAcao, useLanche } from '../../componentes/ui';
@@ -257,7 +257,7 @@ function Clientes({ id }: { id: string }) {
 
 function Conversas({ id }: { id: string }) {
   const r = useCarregar(() => api.conversasEmpresa(id), [id]);
-  const inicial = new URLSearchParams(location.search).get('c');
+  const inicial = busca().get('c');
   const [aberta, setAberta] = useState<string | null>(inicial);
   useRepetir(() => void r.recarregar(true), 15000);
   if (!r.dados) return <Carregando />;

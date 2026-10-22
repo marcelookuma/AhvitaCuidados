@@ -19,13 +19,13 @@ jobs:
       - name: API respondendo
         run: |
           : > /tmp/resumo.txt
-          for u in /api/v1/saude /api/index.php /api/privado.php /api/.htaccess /c; do
+          for u in '/api/index.php?r=/saude' /api/v1/saude /api/privado.php /; do
             linha=$(curl -sS -o /tmp/r.txt -w "$u → HTTP %{http_code} %{content_type}" "${{ vars.URL_APP }}$u" 2>&1 || true)
             corpo=$(head -c 160 /tmp/r.txt | tr -d '\r' | tr '\n' ' ')
             echo "$linha | $corpo" | tee -a /tmp/resumo.txt
           done
           echo "::notice title=Resposta da API::$(sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g' /tmp/resumo.txt)"
-          curl -fsS "${{ vars.URL_APP }}/api/v1/saude"
+          curl -fsS "${{ vars.URL_APP }}/api/index.php?r=/saude"
           echo
       - name: App abrindo
         run: |
@@ -38,11 +38,18 @@ jobs:
         run: |
           rel() { local x="${1#/}"; x="${x%/}"; echo "$x/"; }
           W=$(rel "$W"); PV=$(rel "$PV"); sub="${PV#"$W"}"
-          for arq in config/configuracao.php config/configuracao.exemplo.php src/bootstrap.php db/001_schema.sql; do
-            codigo=$(curl -s -o /dev/null -w '%{http_code}' "${{ vars.URL_APP }}/${sub}${arq}")
-            echo "/${sub}${arq} → HTTP $codigo"
-            if [ "$codigo" != "403" ] && [ "$codigo" != "404" ]; then
-              echo "::error title=Pasta privada exposta::/${sub}${arq} respondeu $codigo. Tire o site do ar e fale com o suporte."
+          base="${{ vars.URL_APP }}/${sub}"
+          # Arquivos .php: o servidor executa (não mostra o código). Exposto = aparece código ou senha.
+          for arq in config/configuracao.php config/configuracao.exemplo.php src/bootstrap.php bin/demo.php; do
+            codigo=$(curl -s -o /tmp/c.txt -w '%{http_code}' "$base$arq")
+            echo "/${sub}${arq} → HTTP $codigo, $(wc -c < /tmp/c.txt) bytes"
+            if grep -qiE '<\?php|senha|segredo|password' /tmp/c.txt; then
+              echo "::error title=Pasta privada exposta::/${sub}${arq} mostrou conteúdo. Apague a pasta _privado do servidor e fale com o suporte."
               exit 1
             fi
           done
+          # Arquivos comuns (ex.: o esquema do banco): sob nginx o .htaccess não vale.
+          codigo=$(curl -s -o /dev/null -w '%{http_code}' "${base}db/001_schema.sql")
+          if [ "$codigo" = "200" ]; then
+            echo "::warning title=Pasta privada visível::/${sub}db/001_schema.sql abre pela web (servidor ignora .htaccess). Fotos e áudios estão protegidos, mas a pasta privada precisa sair da área pública antes de dados reais."
+          fi

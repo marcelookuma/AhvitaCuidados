@@ -54,18 +54,21 @@ final class MidiasControlador extends Controlador
         }
 
         $id = Ulid::novo();
-        $rel = Tempo::agora()->format('Y/m') . "/$id.$ext";
+        $rel = Tempo::agora()->format('Y/m') . "/$id.$ext.php"; // .php + prefixo: nunca servido como arquivo
         $destino = rtrim((string)Config::get('midias.pasta'), '/') . '/' . $rel;
         if (!is_dir(dirname($destino)) && !mkdir(dirname($destino), 0750, true) && !is_dir(dirname($destino))) {
             throw new ErroHttp(500, 'midias', 'Não conseguimos guardar o arquivo.');
         }
-        $ok = is_uploaded_file((string)$f['tmp_name']) ? move_uploaded_file((string)$f['tmp_name'], $destino) : rename((string)$f['tmp_name'], $destino);
-        if (!$ok) throw new ErroHttp(500, 'midias', 'Não conseguimos guardar o arquivo.');
+        $tmp = (string)$f['tmp_name'];
+        if (!is_uploaded_file($tmp) && !is_file($tmp)) throw new ErroHttp(500, 'midias', 'Não conseguimos guardar o arquivo.');
+        $sha = (string)hash_file('sha256', $tmp);
+        $bytes = (int)filesize($tmp);
+        if (!\Cuidados\Support\ArquivoProtegido::guardar($tmp, $destino)) throw new ErroHttp(500, 'midias', 'Não conseguimos guardar o arquivo.');
         chmod($destino, 0640);
         Bd::inserir('midias', [
             'id' => $id, 'pessoa_id' => $pessoaId, 'conversa_id' => $conversaId, 'autor_id' => $this->uid(),
-            'tipo' => $tipo, 'mime' => $mime === 'video/webm' ? 'audio/webm' : $mime, 'bytes' => (int)filesize($destino),
-            'caminho' => $rel, 'sha256' => (string)hash_file('sha256', $destino), 'criado_em' => Tempo::agoraSql(),
+            'tipo' => $tipo, 'mime' => $mime === 'video/webm' ? 'audio/webm' : $mime, 'bytes' => $bytes,
+            'caminho' => $rel, 'sha256' => $sha, 'criado_em' => Tempo::agoraSql(),
         ]);
         return Resposta::json(['id' => $id, 'tipo' => $tipo], 201);
     }

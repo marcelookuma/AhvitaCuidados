@@ -8,13 +8,14 @@ declare(strict_types=1);
  * O banco precisa estar vazio (bin/instalar.php sem --demo).
  */
 
-$base = ($argv[1] ?? 'http://127.0.0.1:8099') . '/api/v1';
+// Segundo argumento "r": usa /api/index.php?r=… (servidor sem reescrita de URL, como o nginx da KingHost)
+$base = ($argv[1] ?? 'http://127.0.0.1:8099') . (($argv[2] ?? '') === 'r' ? '/api/index.php?r=' : '/api/v1');
 $ok = 0; $falhas = 0;
 
 function req(string $metodo, string $caminho, ?array $corpo = null, ?string $token = null, ?array $multipart = null): array
 {
     global $base;
-    $ch = curl_init($base . $caminho);
+    $ch = curl_init(str_contains($base, '?') ? $base . preg_replace('/\?/', '&', $caminho, 1) : $base . $caminho);
     $cab = ['X-Cuidados: 1'];
     if ($token) $cab[] = 'Authorization: Bearer ' . $token;
     if ($multipart !== null) {
@@ -200,6 +201,7 @@ $r = req('POST', "/pessoas/$pid/registros", ['id' => ulid(), 'tipo' => 'comida',
 confere('registro de comida com foto', $r['s'] === 201 && $r['j']['midia_id'] === $midia);
 $r = req('GET', "/midias/$midia", null, $tGestor);
 confere('gestor vê a foto (com permissão)', $r['s'] === 200 && str_contains($r['h'], 'image/png'));
+confere('foto volta igual à enviada', $r['bruto'] === file_get_contents($arq));
 $txt = tempnam(sys_get_temp_dir(), 'txt');
 file_put_contents($txt, '<?php echo 1;');
 $r = req('POST', '/midias', null, $tCuid, ['pessoa_id' => $pid, 'arquivo' => new CURLFile($txt, 'image/png', 'falso.png')]);

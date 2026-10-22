@@ -1,6 +1,6 @@
 # API v1 — Ahvita Cuidados
 
-Base: `https://cuidados.ahvita.com/api/v1` · JSON UTF-8 · datas ISO 8601 em UTC (`2026-10-21T10:32:00Z`).
+Base: `https://cuidados.ahvita.com/api/index.php?r=` (funciona em qualquer servidor, inclusive nginx sem reescrita de URL; o "?" da rota vira "&", ex.: `?r=/conversas&desde=…`) ou `https://cuidados.ahvita.com/api/v1` onde houver Apache com .htaccess · JSON UTF-8 · datas ISO 8601 em UTC (`2026-10-21T10:32:00Z`).
 
 **Autenticação**: web usa o cookie `cuidados_sessao` (httpOnly) e **toda escrita precisa do cabeçalho `X-Cuidados: 1`**; app Android/iOS usa `Authorization: Bearer <token>` (recebido em `/auth/entrar`).
 
