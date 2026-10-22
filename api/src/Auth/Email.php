@@ -57,7 +57,9 @@ final class Email
             $cmd('STARTTLS', '220', 'STARTTLS');
             if (@stream_socket_enable_crypto($s, true, STREAM_CRYPTO_METHOD_TLS_CLIENT) !== true) {
                 $e = error_get_last()['message'] ?? '';
-                throw self::falha("TLS com $host falhou ($e). Se o certificado do servidor for de outro nome, use o host que aparece no certificado ou email.smtp.verificar_certificado = false");
+                $nomes = self::nomesDoCertificado($host, $porta);
+                throw self::falha("TLS com $host falhou ($e)." . ($nomes !== '' ? " O certificado do servidor vale para: $nomes. Use um desses nomes em email.smtp.host." : '')
+                    . ' Ou, em último caso, email.smtp.verificar_certificado = false');
             }
             $cmd('EHLO ' . (gethostname() ?: 'localhost'), '250', 'EHLO após TLS');
         }
@@ -76,6 +78,31 @@ final class Email
         $cmd($msg, '250', 'envio da mensagem');
         fwrite($s, "QUIT\r\n");
         fclose($s);
+    }
+
+    /** Nomes que o certificado do SMTP aceita (para corrigir email.smtp.host). */
+    private static function nomesDoCertificado(string $host, int $porta): string
+    {
+        try {
+            $ctx = stream_context_create(['ssl' => ['verify_peer' => false, 'verify_peer_name' => false, 'capture_peer_cert' => true]]);
+            $s = @stream_socket_client("tcp://$host:$porta", $n, $m, 10, STREAM_CLIENT_CONNECT, $ctx);
+            if (!$s) return '';
+            stream_set_timeout($s, 10);
+            $ler = function () use ($s): void { while (($l = fgets($s, 515)) !== false) { if (isset($l[3]) && $l[3] === ' ') break; } };
+            $ler();
+            fwrite($s, "EHLO localhost\r\n"); $ler();
+            fwrite($s, "STARTTLS\r\n"); $ler();
+            if (@stream_socket_enable_crypto($s, true, STREAM_CRYPTO_METHOD_TLS_CLIENT) !== true) return '';
+            $cert = stream_context_get_params($s)['options']['ssl']['peer_certificate'] ?? null;
+            fclose($s);
+            $info = $cert ? openssl_x509_parse($cert) : false;
+            if (!$info) return '';
+            $san = (string)($info['extensions']['subjectAltName'] ?? '');
+            $lista = $san !== '' ? str_replace('DNS:', '', $san) : (string)($info['subject']['CN'] ?? '');
+            return mb_substr($lista, 0, 200);
+        } catch (\Throwable) {
+            return '';
+        }
     }
 
     /** Erro para o app (424: a KingHost troca o corpo das respostas 5xx) e motivo no log. */
