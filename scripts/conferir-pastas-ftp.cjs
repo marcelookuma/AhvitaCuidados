@@ -42,6 +42,9 @@ function erro(msg) {
   } else if (!pastas.includes(primeira)) {
     erro(`A pasta "${primeira}" (KINGHOST_PASTA_WWW=${W}) não existe na pasta inicial do FTP` +
       (temIndex ? ' e ali já há um index: o FTP abre DENTRO da pasta pública. Use KINGHOST_PASTA_WWW=/ .' : '. Confira o nome no FileZilla.'));
+  } else if (temIndex) {
+    erro(`A pasta inicial do FTP já tem um index (é a pasta pública do site) e também uma pasta "${primeira}" ` +
+      `— provavelmente sobra de um envio anterior. Apague "${primeira}" no FileZilla e use KINGHOST_PASTA_WWW=/ .`);
   } else {
     console.log(`OK: a pasta pública "${primeira}" existe na pasta inicial do FTP.`);
   }
