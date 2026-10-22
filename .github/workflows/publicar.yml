@@ -138,7 +138,7 @@ jobs:
           PV: ${{ steps.pastas.outputs.privado }}
           PROTO: ${{ vars.FTP_PROTOCOLO || 'ftps' }}
         run: |
-          mkdir -p /tmp/diag && cd /tmp/diag && npm init -y >/dev/null && npm install --no-audit --no-fund basic-ftp@5.0.5 >/dev/null
+          mkdir -p /tmp/diag && cd /tmp/diag && npm init -y >/dev/null && npm install --no-audit --no-fund basic-ftp@5.2.2 >/dev/null
           NODE_PATH=/tmp/diag/node_modules node "$GITHUB_WORKSPACE/scripts/diagnostico-ftp.cjs"
 
       - name: Conferir se está no ar
