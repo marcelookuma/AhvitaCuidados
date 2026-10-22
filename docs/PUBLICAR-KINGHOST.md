@@ -1,60 +1,163 @@
 # Publicar na KingHost (plano de revenda)
 
 O app roda na hospedagem **PHP** comum: não precisa de Node.js, Composer nem SSH na hospedagem.
+A primeira instalação é feita **uma vez**; depois, cada envio ao GitHub publica sozinho (ver o fim deste guia).
 
-## 0. Antes de começar (5 min)
-1. No painel da revenda, crie (ou use) o domínio **cuidados.ahvita.com** num plano de hospedagem **Linux** com **PHP 8.1 ou superior**.
-2. Ative o **SSL grátis** (Let's Encrypt) do domínio. Sem HTTPS o login não funciona (cookie seguro).
-3. Confirme com o suporte, se tiver dúvida: *PHP 8.1+, extensões `pdo_mysql`, `curl`, `fileinfo`, `mbstring`, `openssl`, `mod_rewrite` ligado e permissão para pasta acima de `www`.* São padrão na KingHost.
+> Os nomes dos menus podem variar um pouco conforme a versão do painel da KingHost. Se não achar algum item, o suporte (chat/WhatsApp, 24 h) resolve rápido: os pedidos estão escritos prontos para copiar.
 
-## 1. Gerar o pacote (no seu computador ou pelo fornecedor)
-```bash
-npm install
-npm run pacote:kinghost      # confere o vocabulário, compila o app e monta pacote-kinghost/
+---
+
+## Etapa 1 — Criar a hospedagem do app (painel da revenda)
+
+**Recomendado:** criar `cuidados.ahvita.com` como **hospedagem própria** dentro da revenda (um cliente/plano só para o app), e não como subpasta do site `ahvita.com`.
+- Fica com FTP, banco e e-mail próprios, isolados do site institucional (dado de saúde separado).
+- A raiz do FTP fica limpa: `www/` (pública) e, ao lado, `privado/`. É exatamente a estrutura que o app espera.
+- Evita o erro 403 da tentativa anterior (arquivos dentro da pasta do site principal).
+
+Passos:
+1. Painel da revenda → **Clientes / Planos** → criar uma hospedagem **Linux** para o domínio `cuidados.ahvita.com`.
+2. No DNS de `ahvita.com`, o subdomínio `cuidados` precisa apontar para essa hospedagem (se o DNS está na própria KingHost, isso costuma ser automático).
+3. Anote os dados de **FTP** que o painel mostra: servidor (ex.: `ftp.cuidados.ahvita.com`), usuário e senha. Eles vão para o GitHub na Etapa 5.
+
+> Se preferir manter como subdomínio do `ahvita.com`, me diga qual é a pasta pública dele (ex.: `/www/cuidados/`). O app funciona, mas preciso ajustar o caminho da pasta `privado` para ela ficar fora da área pública.
+
+## Etapa 2 — PHP e SSL
+
+1. **Versão do PHP:** no painel da hospedagem do app → **PHP** (ou "Linguagens") → escolher **8.1 ou superior** (8.2/8.3 também servem).
+2. **Limites de envio** (fotos de até 8 MB): no mesmo lugar, se houver edição de `php.ini`, ajustar:
+   ```
+   upload_max_filesize = 10M
+   post_max_size = 12M
+   ```
+3. **SSL:** painel → **SSL** / **Certificados** → ativar o **certificado gratuito (Let's Encrypt)** para `cuidados.ahvita.com`. Sem HTTPS o login não funciona (o cookie de sessão é seguro).
+
+Pedido pronto para o suporte, se precisar:
+> "Na hospedagem cuidados.ahvita.com, preciso de: PHP 8.1 ou superior; extensões pdo_mysql, curl, fileinfo, mbstring e openssl; mod_rewrite e mod_headers ativos; upload_max_filesize 10M e post_max_size 12M; SSL gratuito ativo. Também preciso confirmar que posso criar uma pasta ao lado de www (fora da área pública) e qual é o caminho completo da raiz da conta (ex.: /home/usuario)."
+
+## Etapa 3 — Banco de dados
+
+1. Painel → **Bancos de dados** → **MySQL** → **Criar banco**.
+   - Nome sugerido: `cuidados` (o painel pode acrescentar um prefixo).
+   - Crie o usuário com **senha forte** (gerenciador de senhas, 24+ caracteres).
+2. Anote os 4 dados que o painel mostra: **servidor (host)**, **nome do banco**, **usuário**, **senha**. O host da KingHost normalmente **não** é `localhost`: use exatamente o que aparece no painel.
+3. **Criar as tabelas** (escolha uma forma):
+   - **phpMyAdmin** (pelo painel) → selecione o banco → aba **Importar** → arquivo `db/001_schema.sql` (baixe do GitHub: repositório → pasta `db` → arquivo → botão de download) → **Executar**. Devem aparecer 25 tabelas.
+   - **ou deixar o cron criar** (Etapa 7): na primeira execução ele aplica o `001_schema.sql` sozinho.
+   - O aviso do phpMyAdmin sobre "controluser" pode ser ignorado. Não há gatilhos no esquema, então o erro #1419 da versão anterior não acontece.
+
+## Etapa 4 — E-mail para o código de acesso
+
+1. Painel → **E-mail** → criar a conta `nao-responda@cuidados.ahvita.com` (ou `@ahvita.com`) com senha forte.
+2. Anote o **servidor SMTP**, a **porta** (normalmente 587 com TLS) e a senha.
+
+**Sobre SMS/WhatsApp:** para a fase de validação, recomendo começar **só com e-mail** (sem custo e sem transferência internacional de dados). Para cuidadores(as) sem e-mail, ligar a Twilio depois (`codigo.canais` + chaves `twilio`), sabendo que é serviço pago e fora do Brasil (citar na política de privacidade).
+
+## Etapa 5 — Ligar o GitHub à KingHost
+
+No repositório **marcelookuma/AhvitaCuidados** → **Settings** → **Secrets and variables** → **Actions**:
+
+| Aba | Nome | Valor |
+|---|---|---|
+| Secrets | `FTP_SERVIDOR` | servidor FTP da Etapa 1 |
+| Secrets | `FTP_USUARIO` | usuário FTP |
+| Secrets | `FTP_SENHA` | senha FTP |
+| Variables | `KINGHOST_PASTA_WWW` | `/www/` (pasta pública; confira abrindo o FTP) |
+| Variables | `KINGHOST_PASTA_PRIVADO` | `/privado/` |
+| Variables | `URL_APP` | `https://cuidados.ahvita.com` |
+| Variables | `FTP_PROTOCOLO` | só se o envio falhar com FTPS: `ftp` |
+
+Recomendado: **Settings → Environments → New environment** → nome `producao` → marcar **Required reviewers** e colocar você. Assim nada vai ao ar sem a sua aprovação.
+
+Depois: aba **Actions** → **Testar e publicar** → **Run workflow** → `main`. Em uns 4 minutos:
+- `testes` fica verde;
+- `publicar` pede sua aprovação (se ligou o ambiente) e envia `www/` e `privado/` por FTP.
+
+## Etapa 6 — Arquivo de configuração (só no servidor, nunca no GitHub)
+
+1. Pelo FTP (FileZilla, ou o gerenciador de arquivos do painel), abra `privado/config/`.
+2. Baixe `configuracao.exemplo.php`, salve uma cópia como **`configuracao.php`** e preencha:
+
+```php
+<?php
+return [
+    'ambiente' => 'producao',
+    'url_app'  => 'https://cuidados.ahvita.com',
+    'fuso'     => 'America/Sao_Paulo',
+    'app'   => ['segredo' => 'COLE-AQUI-64-CARACTERES-ALEATORIOS'],
+    'db'    => [
+        'host'    => 'HOST-DO-PAINEL',
+        'porta'   => 3306,
+        'nome'    => 'NOME-DO-BANCO',
+        'usuario' => 'USUARIO-DO-BANCO',
+        'senha'   => 'SENHA-DO-BANCO',
+    ],
+    'codigo' => ['canais' => ['email']],
+    'email'  => [
+        'remetente' => 'Ahvita Cuidados <nao-responda@cuidados.ahvita.com>',
+        'smtp' => [
+            'host'      => 'SMTP-DO-PAINEL',
+            'porta'     => 587,
+            'seguranca' => 'tls',
+            'usuario'   => 'nao-responda@cuidados.ahvita.com',
+            'senha'     => 'SENHA-DO-EMAIL',
+        ],
+    ],
+    'termos' => ['versao' => '2026-10'],
+];
 ```
+3. Envie o `configuracao.php` para `privado/config/`.
 
-## 2. Banco de dados
-1. Painel → **Bancos de dados** → **MySQL** → criar banco (ex.: `ahvita_cuidados`) e usuário com senha forte.
-2. **phpMyAdmin** → selecione o banco → **Importar** → `privado/db/001_schema.sql`.
-   - Os avisos sobre "controluser" do phpMyAdmin podem ser ignorados.
-   - Não há gatilhos no esquema: o erro #1419 da versão anterior não acontece mais.
+- `app.segredo`: gere 64 caracteres aleatórios no gerenciador de senhas (sem espaços). Não reutilize senha nenhuma.
+- **Nunca** use `'ambiente' => 'teste'` com pessoas reais: em teste o código de acesso aparece na tela.
+- A publicação automática **não sobrescreve nem apaga** este arquivo.
 
-## 3. Arquivos (FTP)
-| Do pacote | Para a hospedagem |
+## Etapa 7 — Cron (tarefas a cada 5 minutos)
+
+Painel → **Agendador de tarefas** (ou "Cron") → nova tarefa:
+- Frequência: **a cada 5 minutos**
+- Comando:
+  ```
+  php /home/USUARIO/privado/bin/agendador.php
+  ```
+  Troque `/home/USUARIO` pelo caminho da raiz da conta (o painel ou o suporte informa). Se o painel pedir o PHP com versão, use o da Etapa 2 (ex.: `php8.2`).
+
+O cron:
+- aplica migrações novas do banco (inclusive o `001_schema.sql`, se você não importou na Etapa 3);
+- gera o alerta "sem resposta no prazo combinado" para gestor(a) e empresa;
+- limpa códigos e sessões vencidos.
+
+Sem cron o app continua funcionando, mas o alerta só aparece quando alguém abre o painel, e as migrações futuras não entram sozinhas.
+
+## Etapa 8 — Conferir
+
+| Teste | Esperado |
 |---|---|
-| `www/*` (inclusive os ocultos `.htaccess`) | pasta pública do domínio (ex.: `/www/` ou `/cuidados.ahvita.com/`) |
-| `privado/` | **ao lado** da pasta pública, nunca dentro dela (ex.: `/privado/`) |
+| `https://cuidados.ahvita.com/api/v1/saude` | `{"ok":true,"versao":"1.0.0"}` |
+| `https://cuidados.ahvita.com/` | tela **Entrar** do app |
+| `http://cuidados.ahvita.com/` (sem s) | redireciona para `https://` |
+| `https://cuidados.ahvita.com/privado/config/configuracao.php` | erro 403 ou 404 (**nunca** mostrar o conteúdo) |
+| Entrar com seu e-mail | o código chega em até 1 minuto (veja o spam) |
+| Cadastrar uma pessoa de teste e registrar algo | aparece na conversa e na linha do tempo |
+| phpMyAdmin → tabela `auditoria` | linhas novas a cada ação |
 
-> Se a hospedagem não deixar criar pasta fora da pública, coloque `privado/` dentro e mantenha o `privado/.htaccess` (bloqueia o acesso web). Avise o fornecedor: é uma solução de contorno.
-
-## 4. Configuração
-1. Em `privado/config/`, copie `configuracao.exemplo.php` para `configuracao.php`.
-2. Preencha: `db` (host, nome, usuário, senha do passo 2), `app.segredo` (64 caracteres aleatórios), `email.smtp` (crie a conta `nao-responda@ahvita.com` no painel) e, se for usar SMS/WhatsApp, `twilio`.
-3. **Nunca** deixe `'ambiente' => 'teste'` com pessoas reais: em teste o código de acesso aparece na tela.
-
-## 5. Cron (recomendado)
-Painel → **Agendador de tarefas** → a cada 5 minutos:
-```
-php /home/<seu-usuario>/privado/bin/agendador.php
-```
-Gera os alertas de "sem resposta no prazo combinado" e limpa códigos e sessões vencidos. Sem cron o app continua correto (os painéis também verificam ao abrir), só que o alerta aparece quando alguém abre o painel.
-
-## 6. Conferir
-- `https://cuidados.ahvita.com/api/v1/saude` → `{"ok":true,…}`
-- `https://cuidados.ahvita.com/privado/config/configuracao.php` → **precisa** dar erro (403/404).
-- Entrar com seu celular ou e-mail e cadastrar uma pessoa cuidada de teste.
-
-## Demonstração (opcional, nunca com dados reais)
-Em um banco separado: `'ambiente' => 'teste'`, `'codigo' => ['canais' => ['log','email'], 'teste_fixo' => '123456']` e rode `php privado/bin/demo.php`. Entre com (11) 90000-0001 (gestor), 0002 (cuidadora) ou 0003 (empresa), código 123456.
+Depois do teste, exclua a pessoa de teste em **Cadastro e privacidade**.
 
 ## Problemas comuns
 | Sintoma | Causa provável |
 |---|---|
-| 403 "Acesso negado" no app | arquivos na pasta errada, ou faltou o `.htaccess` (arquivo oculto) |
-| Página em branco em `/api/v1/saude` | PHP abaixo de 8.1; mude a versão no painel |
+| 403 "Acesso negado" no app | arquivos na pasta errada, ou faltou o `.htaccess` (arquivo oculto: no FileZilla, "Servidor → Forçar exibir arquivos ocultos") |
+| Página em branco ou erro 500 em `/api/v1/saude` | PHP abaixo de 8.1, ou `configuracao.php` com erro de digitação (vírgula, aspas) |
+| `{"erro":{"codigo":"banco"…}}` | dados do banco errados no `configuracao.php` (confira o host do painel) |
+| Código não chega por e-mail | dados SMTP errados; teste a conta no webmail; olhe o spam |
+| Login volta para "Entrar" | site sem HTTPS (cookie seguro) |
+| Foto não envia | limites de upload do PHP (Etapa 2) |
+| GitHub: falha no passo "Enviar … (FTP)" | dados FTP errados, ou a KingHost recusou FTPS: crie a variável `FTP_PROTOCOLO` = `ftp` |
 | "Envio bloqueado por segurança" | proxy/antivírus removendo o cabeçalho `X-Cuidados`; teste em outra rede |
-| Login volta para "Entrar" | site sem HTTPS (cookie `Secure`) |
-| Foto não envia | limite de upload do PHP abaixo de 8 MB (`upload_max_filesize`, `post_max_size`) |
+
+## Demonstração (opcional, nunca com dados reais)
+Em um banco e hospedagem separados: `'ambiente' => 'teste'`, `'codigo' => ['canais' => ['log','email'], 'teste_fixo' => '123456']` e `php privado/bin/demo.php`. Entrar com (11) 90000-0001 (gestor), 0002 (cuidadora) ou 0003 (empresa), código 123456.
+
+---
 
 ## Publicação automática pelo GitHub (depois da primeira instalação)
 O arquivo `.github/workflows/publicar.yml` faz, a cada envio para a branch `main`:
@@ -62,17 +165,4 @@ O arquivo `.github/workflows/publicar.yml` faz, a cada envio para a branch `main
 2. **Publica** (só se os testes passarem): envia `www/` e `privado/` por FTP, sem tocar em `privado/config/configuracao.php` nem em `privado/midias/`.
 3. **Confere** se `URL_APP/api/v1/saude` responde.
 
-As migrações do banco (`db/002_*.sql` em diante) são aplicadas pelo cron `bin/agendador.php` em até 5 minutos depois da publicação.
-
-Configuração, uma vez só, em GitHub → repositório → Settings → Secrets and variables → Actions:
-| Tipo | Nome | Exemplo |
-|---|---|---|
-| Secret | `FTP_SERVIDOR` | `ftp.ahvita.com` |
-| Secret | `FTP_USUARIO` | usuário FTP do domínio |
-| Secret | `FTP_SENHA` | senha FTP |
-| Variable | `KINGHOST_PASTA_WWW` | `/www/` (pasta pública do subdomínio) |
-| Variable | `KINGHOST_PASTA_PRIVADO` | `/privado/` |
-| Variable | `URL_APP` | `https://cuidados.ahvita.com` |
-| Variable | `FTP_PROTOCOLO` | `ftps` (use `ftp` só se a KingHost recusar FTPS) |
-
-Recomendado: em Settings → Environments, criar `producao` com aprovação obrigatória, para nada ir ao ar sem um clique seu.
+As migrações do banco (`db/002_*.sql` em diante) são aplicadas pelo cron em até 5 minutos depois da publicação.
