@@ -41,6 +41,9 @@ return [
             'seguranca' => 'tls',        // 'tls' (587) ou 'ssl' (465)
             'usuario' => 'nao-responda@ahvita.com',
             'senha' => '',
+            // KingHost: se o certificado do SMTP não for do nome acima, o envio falha no TLS.
+            // Use o servidor indicado no painel de e-mail; em último caso, false (ainda criptografa).
+            'verificar_certificado' => true,
         ],
     ],
 

@@ -54,7 +54,10 @@ export function criarApi(op: OpcoesApi) {
     if (!resp.ok) {
       if (resp.status === 401) op.aoPerderSessao?.();
       const e = dados?.erro ?? {};
-      throw new ErroApi(resp.status, e.codigo ?? 'erro', e.mensagem ?? 'Algo deu errado. Tente de novo.', e.campos ?? {});
+      const padrao = dados === null && resp.status >= 500
+        ? `O servidor está com problema (erro ${resp.status}). Tente de novo em alguns minutos.`
+        : 'Algo deu errado. Tente de novo.';
+      throw new ErroApi(resp.status, e.codigo ?? 'erro', e.mensagem ?? padrao, e.campos ?? {});
     }
     return dados as T;
   }

@@ -81,7 +81,7 @@ final class Canais
         $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
         if ($corpo === false || $status >= 500) {
-            throw new ErroHttp(503, 'canal_fora', 'Não conseguimos enviar agora. Tente pelo e-mail.');
+            throw new ErroHttp(424, 'canal_fora', 'Não conseguimos enviar agora. Tente pelo e-mail.');
         }
         $d = json_decode((string)$corpo, true);
         if ($status >= 400 && $recurso === 'Verifications') {

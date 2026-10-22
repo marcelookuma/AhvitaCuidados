@@ -6,3 +6,4 @@ api/midias/
 api/midias-teste/
 *.log
 envio/
+api/logs/
