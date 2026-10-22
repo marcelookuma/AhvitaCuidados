@@ -138,22 +138,8 @@ jobs:
           PV: ${{ steps.pastas.outputs.privado }}
           PROTO: ${{ vars.FTP_PROTOCOLO || 'ftps' }}
         run: |
-          TLS=""; [ "$PROTO" = "ftps" ] && TLS="--ssl-reqd"
-          listar() { curl -sS -m 30 $TLS --list-only -u "$U:$P" "ftp://$S/$1" 2>&1 | sed 's/^/   /' || true; }
-          testar() {
-            if curl -sS -m 30 $TLS -u "$U:$P" "ftp://$S/" -Q "MKD ${1}teste-github" -Q "RMD ${1}teste-github" -o /dev/null 2>/tmp/e; then
-              echo "   OK: consegue criar pastas em '${1:-raiz}'"
-            else
-              echo "   FALHOU em '${1:-raiz}': $(cat /tmp/e)"
-            fi
-          }
-          echo "== O que o usuário FTP vê ao entrar =="; listar ""
-          echo "== Conteúdo de www/ =="; listar "www/"
-          echo "== Conteúdo de $W =="; listar "$W"
-          echo "== Pode criar pastas na pasta pública ($W)? =="; testar "$W"
-          echo "== Pode criar pastas na raiz (onde ficaria $PV)? =="; testar ""
-          echo "== Pode criar pastas em www/? =="; testar "www/"
-          echo "Copie tudo a partir de '== O que o usuário FTP vê' e mande para o Claude."
+          mkdir -p /tmp/diag && cd /tmp/diag && npm init -y >/dev/null && npm install --no-audit --no-fund basic-ftp@5.0.5 >/dev/null
+          NODE_PATH=/tmp/diag/node_modules node "$GITHUB_WORKSPACE/scripts/diagnostico-ftp.cjs"
 
       - name: Conferir se está no ar
         if: vars.URL_APP != ''
