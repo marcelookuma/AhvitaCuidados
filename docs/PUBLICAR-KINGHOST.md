@@ -7,19 +7,26 @@ A primeira instalação é feita **uma vez**; depois, cada envio ao GitHub publi
 
 ---
 
-## Etapa 1 — Criar a hospedagem do app (painel da revenda)
+## Etapa 1 — Onde o app fica na hospedagem
 
-**Recomendado:** criar `cuidados.ahvita.com` como **hospedagem própria** dentro da revenda (um cliente/plano só para o app), e não como subpasta do site `ahvita.com`.
-- Fica com FTP, banco e e-mail próprios, isolados do site institucional (dado de saúde separado).
-- A raiz do FTP fica limpa: `www/` (pública) e, ao lado, `privado/`. É exatamente a estrutura que o app espera.
-- Evita o erro 403 da tentativa anterior (arquivos dentro da pasta do site principal).
+Na conta da KingHost, o subdomínio `cuidados.ahvita.com` usa a pasta pública **`/www/cuidados/`**. A estrutura final fica assim:
 
-Passos:
-1. Painel da revenda → **Clientes / Planos** → criar uma hospedagem **Linux** para o domínio `cuidados.ahvita.com`.
-2. No DNS de `ahvita.com`, o subdomínio `cuidados` precisa apontar para essa hospedagem (se o DNS está na própria KingHost, isso costuma ser automático).
-3. Anote os dados de **FTP** que o painel mostra: servidor (ex.: `ftp.cuidados.ahvita.com`), usuário e senha. Eles vão para o GitHub na Etapa 5.
+```
+(raiz do FTP)
+├── www/                     área pública do ahvita.com
+│   └── cuidados/            ← pasta pública do app (KINGHOST_PASTA_WWW)
+│       ├── index.html, assets/, .htaccess…
+│       └── api/index.php    (porta de entrada da API)
+└── cuidados_privado/        ← código, senhas, fotos e áudios (KINGHOST_PASTA_PRIVADO)
+    ├── src/  bin/  db/
+    ├── config/configuracao.php
+    └── midias/
+```
 
-> Se preferir manter como subdomínio do `ahvita.com`, me diga qual é a pasta pública dele (ex.: `/www/cuidados/`). O app funciona, mas preciso ajustar o caminho da pasta `privado` para ela ficar fora da área pública.
+- A pasta privada fica na **raiz do FTP**, fora de `/www`. Se ficasse em `/www/…`, estaria dentro da área pública do `ahvita.com`. O empacotador recusa colocá-la dentro da pasta pública do app.
+- O app só atende por `https://cuidados.ahvita.com`. Quem abrir `ahvita.com/cuidados/` é redirecionado.
+- **Limpeza da tentativa anterior:** se ainda existir `/www/cuidados/AhvitaCuidados/` (a v1 enviada para a pasta errada), apague a pasta inteira. Se dentro dela houver `configuracao.env`, **troque a senha do banco** usado na v1, porque esse arquivo pode ter ficado acessível pela internet.
+- Anote os dados de **FTP** da conta (servidor, usuário e senha). Eles vão para o GitHub na Etapa 5.
 
 ## Etapa 2 — PHP e SSL
 
@@ -32,7 +39,7 @@ Passos:
 3. **SSL:** painel → **SSL** / **Certificados** → ativar o **certificado gratuito (Let's Encrypt)** para `cuidados.ahvita.com`. Sem HTTPS o login não funciona (o cookie de sessão é seguro).
 
 Pedido pronto para o suporte, se precisar:
-> "Na hospedagem cuidados.ahvita.com, preciso de: PHP 8.1 ou superior; extensões pdo_mysql, curl, fileinfo, mbstring e openssl; mod_rewrite e mod_headers ativos; upload_max_filesize 10M e post_max_size 12M; SSL gratuito ativo. Também preciso confirmar que posso criar uma pasta ao lado de www (fora da área pública) e qual é o caminho completo da raiz da conta (ex.: /home/usuario)."
+> "Na hospedagem do subdomínio cuidados.ahvita.com (pasta /www/cuidados), preciso de: PHP 8.1 ou superior; extensões pdo_mysql, curl, fileinfo, mbstring e openssl; mod_rewrite e mod_headers ativos; upload_max_filesize 10M e post_max_size 12M; SSL gratuito ativo. Também preciso confirmar que posso criar a pasta /cuidados_privado na raiz do FTP (fora de /www) e que o PHP do site consegue ler essa pasta, e qual é o caminho completo da raiz da conta (ex.: /home/usuario)."
 
 ## Etapa 3 — Banco de dados
 
@@ -59,8 +66,8 @@ Feita uma vez, no repositório **marcelookuma/AhvitaCuidados**. Os segredos fica
 ### 5.1 Separar os dados (vêm da Etapa 1)
 - **Servidor FTP**: só o nome, sem `ftp://` e sem porta (ex.: `ftp.cuidados.ahvita.com`).
 - **Usuário** e **senha** do FTP.
-- **Pasta pública**: abra o FTP (FileZilla ou gerenciador de arquivos do painel) e veja o nome da pasta onde ficam os arquivos do site, normalmente `www`. O valor é `/www/` (com barra no início e no fim).
-- **Pasta privada**: `/privado/` (ao lado da `www`; o GitHub cria se não existir).
+- **Pasta pública**: `/www/cuidados/` (com barra no início e no fim).
+- **Pasta privada**: `/cuidados_privado/` (na raiz do FTP; o GitHub cria se não existir).
 
 ### 5.2 Cadastrar os segredos
 1. Repositório → aba **Settings** (engrenagem, no topo; só aparece para quem é dono).
@@ -80,8 +87,8 @@ Mesma tela → aba **Variables** → **New repository variable**:
 
 | Name | Value | Obrigatória? |
 |---|---|---|
-| `KINGHOST_PASTA_WWW` | `/www/` | sim — sem ela nada é publicado |
-| `KINGHOST_PASTA_PRIVADO` | `/privado/` | sim |
+| `KINGHOST_PASTA_WWW` | `/www/cuidados/` | sim — sem ela nada é publicado |
+| `KINGHOST_PASTA_PRIVADO` | `/cuidados_privado/` | sim |
 | `URL_APP` | `https://cuidados.ahvita.com` | recomendada (confere se subiu) |
 | `FTP_PROTOCOLO` | `ftp` | só se o FTPS falhar (5.6) |
 | `PUBLICAR_AUTOMATICO` | `sim` | **não crie agora** (ver 5.5) |
@@ -113,13 +120,13 @@ Clique no passo vermelho para ver a mensagem:
 | erro de TLS / `certificate` / `AUTH TLS` | crie `FTP_PROTOCOLO` = `ftp` (sem criptografia: troque a senha FTP depois de estabilizar e peça FTPS ao suporte) |
 | `550` / `No such file or directory` | pasta errada em `KINGHOST_PASTA_WWW`/`KINGHOST_PASTA_PRIVADO` |
 | "Conferir se está no ar" com `404` | arquivos foram para a pasta errada (não é a pública do domínio) |
-| "Conferir se está no ar" com `500` | PHP abaixo de 8.1 (Etapa 2) |
+| "Conferir se está no ar" com `500` | PHP abaixo de 8.1 (Etapa 2), ou a mensagem "Pasta privada da API não encontrada": confira `KINGHOST_PASTA_PRIVADO` e se a hospedagem permite ler fora de `/www` (pergunte ao suporte) |
 | job **publicar** aparece como *skipped* | normal num envio comum (5.5), ou falta `KINGHOST_PASTA_WWW` |
 | job **testes** vermelho | algo no código: me mande o texto do erro |
 
 ## Etapa 6 — Arquivo de configuração (só no servidor, nunca no GitHub)
 
-1. Pelo FTP (FileZilla, ou o gerenciador de arquivos do painel), abra `privado/config/`.
+1. Pelo FTP (FileZilla, ou o gerenciador de arquivos do painel), abra `/cuidados_privado/config/`.
 2. Baixe `configuracao.exemplo.php`, salve uma cópia como **`configuracao.php`** e preencha:
 
 ```php
@@ -150,7 +157,7 @@ return [
     'termos' => ['versao' => '2026-10'],
 ];
 ```
-3. Envie o `configuracao.php` para `privado/config/`.
+3. Envie o `configuracao.php` para `/cuidados_privado/config/`.
 
 - `app.segredo`: gere 64 caracteres aleatórios no gerenciador de senhas (sem espaços). Não reutilize senha nenhuma.
 - **Nunca** use `'ambiente' => 'teste'` com pessoas reais: em teste o código de acesso aparece na tela.
@@ -162,7 +169,7 @@ Painel → **Agendador de tarefas** (ou "Cron") → nova tarefa:
 - Frequência: **a cada 5 minutos**
 - Comando:
   ```
-  php /home/USUARIO/privado/bin/agendador.php
+  php /home/USUARIO/cuidados_privado/bin/agendador.php
   ```
   Troque `/home/USUARIO` pelo caminho da raiz da conta (o painel ou o suporte informa). Se o painel pedir o PHP com versão, use o da Etapa 2 (ex.: `php8.2`).
 
@@ -180,7 +187,8 @@ Sem cron o app continua funcionando, mas o alerta só aparece quando alguém abr
 | `https://cuidados.ahvita.com/api/v1/saude` | `{"ok":true,"versao":"1.0.0"}` |
 | `https://cuidados.ahvita.com/` | tela **Entrar** do app |
 | `http://cuidados.ahvita.com/` (sem s) | redireciona para `https://` |
-| `https://cuidados.ahvita.com/privado/config/configuracao.php` | erro 403 ou 404 (**nunca** mostrar o conteúdo) |
+| `https://ahvita.com/cuidados/` | redireciona para `https://cuidados.ahvita.com/` |
+| `https://ahvita.com/cuidados_privado/config/configuracao.php` | erro 404 (a pasta está fora da área pública) |
 | Entrar com seu e-mail | o código chega em até 1 minuto (veja o spam) |
 | Cadastrar uma pessoa de teste e registrar algo | aparece na conversa e na linha do tempo |
 | phpMyAdmin → tabela `auditoria` | linhas novas a cada ação |
@@ -190,7 +198,7 @@ Depois do teste, exclua a pessoa de teste em **Cadastro e privacidade**.
 ## Problemas comuns
 | Sintoma | Causa provável |
 |---|---|
-| 403 "Acesso negado" no app | arquivos na pasta errada, ou faltou o `.htaccess` (arquivo oculto: no FileZilla, "Servidor → Forçar exibir arquivos ocultos") |
+| 403 "Acesso negado" no app | arquivos na pasta errada, faltou o `.htaccess` (arquivo oculto: no FileZilla, "Servidor → Forçar exibir arquivos ocultos"), ou uma regra do `/www/.htaccess` do site principal bloqueando a subpasta |
 | Página em branco ou erro 500 em `/api/v1/saude` | PHP abaixo de 8.1, ou `configuracao.php` com erro de digitação (vírgula, aspas) |
 | `{"erro":{"codigo":"banco"…}}` | dados do banco errados no `configuracao.php` (confira o host do painel) |
 | Código não chega por e-mail | dados SMTP errados; teste a conta no webmail; olhe o spam |
@@ -207,7 +215,7 @@ Em um banco e hospedagem separados: `'ambiente' => 'teste'`, `'codigo' => ['cana
 ## Publicação automática pelo GitHub (depois da primeira instalação)
 O arquivo `.github/workflows/publicar.yml` faz, a cada envio para a branch `main`:
 1. **Testa**: sintaxe PHP, banco MariaDB de teste, as 91 verificações da API, a trilha de auditoria, o vocabulário e o build do app.
-2. **Publica** quando você clica em Run workflow (ou a cada envio, se `PUBLICAR_AUTOMATICO` = `sim`), só se os testes passarem: envia `www/` e `privado/` por FTP, sem tocar em `privado/config/configuracao.php` nem em `privado/midias/`.
+2. **Publica** quando você clica em Run workflow (ou a cada envio, se `PUBLICAR_AUTOMATICO` = `sim`), só se os testes passarem: envia `www/` e `privado/` por FTP, sem tocar em `config/configuracao.php` nem em `midias/` da pasta privada.
 3. **Confere** se `URL_APP/api/v1/saude` responde.
 
 As migrações do banco (`db/002_*.sql` em diante) são aplicadas pelo cron em até 5 minutos depois da publicação.

@@ -2,8 +2,8 @@
 # Segredos (Settings → Secrets and variables → Actions → Secrets):
 #   FTP_SERVIDOR, FTP_USUARIO, FTP_SENHA
 # Variáveis (mesma tela → aba Variables):
-#   KINGHOST_PASTA_WWW      ex.: /www/            (pasta pública do domínio)
-#   KINGHOST_PASTA_PRIVADO  ex.: /privado/        (fora da pasta pública)
+#   KINGHOST_PASTA_WWW      ex.: /www/cuidados/      (pasta pública do subdomínio)
+#   KINGHOST_PASTA_PRIVADO  ex.: /cuidados_privado/  (raiz do FTP, fora de /www)
 #   URL_APP                 ex.: https://cuidados.ahvita.com
 #   FTP_PROTOCOLO           opcional: ftps (padrão) ou ftp
 #   PUBLICAR_AUTOMATICO     opcional: sim = publica a cada envio para a main
@@ -85,6 +85,10 @@ jobs:
           node-version: 20
           cache: npm
       - name: Montar pacote
+        env:
+          KINGHOST_PASTA_WWW: ${{ vars.KINGHOST_PASTA_WWW }}
+          KINGHOST_PASTA_PRIVADO: ${{ vars.KINGHOST_PASTA_PRIVADO }}
+          URL_APP: ${{ vars.URL_APP }}
         run: |
           npm ci
           npm run pacote:kinghost

@@ -8,11 +8,11 @@
  *     index.html, assets/, sw.js…   app web compilado
  *     .htaccess                     HTTPS + rotas do app
  *     api/index.php, api/.htaccess  porta de entrada da API
- *   privado/    → FORA da pasta pública (mesmo nível de www)
+ *   privado/    → FORA da área pública (ex.: /cuidados_privado/ na raiz do FTP)
  *     src/, bin/, config/configuracao.exemplo.php, db/, midias/
  */
 import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const raiz = join(fileURLToPath(new URL('.', import.meta.url)), '..');
@@ -32,11 +32,37 @@ mkdirSync(join(privado, 'midias'), { recursive: true });
 cpSync(dist, www, { recursive: true });
 cpSync(join(raiz, 'api/public/index.php'), join(www, 'api/index.php'));
 cpSync(join(raiz, 'api/public/.htaccess'), join(www, 'api/.htaccess'));
+
+// Onde fica a pasta privada em relação a www/api/ no servidor.
+// Vem das variáveis do GitHub (KINGHOST_PASTA_WWW e KINGHOST_PASTA_PRIVADO).
+// Ex.: www = /www/cuidados/ e privado = /cuidados_privado/ → ../../../cuidados_privado
+const pastaWww = process.env.KINGHOST_PASTA_WWW || '/www/';
+const pastaPrivado = process.env.KINGHOST_PASTA_PRIVADO || '/privado/';
+const absWww = posix.resolve('/', pastaWww);
+const absPrivado = posix.resolve('/', pastaPrivado);
+if (absPrivado === absWww || absPrivado.startsWith(absWww + '/')) {
+  console.error(`✗ A pasta privada (${pastaPrivado}) não pode ficar dentro da pasta pública (${pastaWww}).`);
+  process.exit(1);
+}
+if (absPrivado.startsWith('/www/') || absPrivado.startsWith('/public_html/')) {
+  console.warn(`⚠ ${pastaPrivado} parece estar dentro da área pública de outro site. Prefira a raiz do FTP (ex.: /cuidados_privado/).`);
+}
+const relativo = posix.relative(posix.join(absWww, 'api'), absPrivado);
+writeFileSync(join(www, 'api/privado.php'), `<?php\n// Gerado pelo empacotador: caminho da pasta privada a partir daqui.\nreturn '${relativo}';\n`);
+console.log(`· pasta privada: ${absPrivado} (a partir de www/api: ${relativo})`);
+
+// Só atende pelo endereço oficial (evita o app abrir por ahvita.com/cuidados/).
+let hostOficial = '';
+try { hostOficial = process.env.URL_APP ? new URL(process.env.URL_APP).host : ''; } catch { hostOficial = ''; }
+const regraHost = hostOficial ? `  # Só pelo endereço oficial
+  RewriteCond %{HTTP_HOST} !^${hostOficial.replace(/\./g, '\\.')}$ [NC]
+  RewriteRule ^ https://${hostOficial}%{REQUEST_URI} [L,R=301]
+` : '';
 writeFileSync(join(www, '.htaccess'), `# Ahvita Cuidados — app web
 Options -Indexes
 <IfModule mod_rewrite.c>
   RewriteEngine On
-  # Sempre HTTPS (dados de saúde)
+${regraHost}  # Sempre HTTPS (dados de saúde)
   RewriteCond %{HTTPS} !=on
   RewriteCond %{HTTP:X-Forwarded-Proto} !https
   RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
