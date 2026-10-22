@@ -1,0 +1,75 @@
+<?php
+declare(strict_types=1);
+
+namespace Cuidados\Http;
+
+use Cuidados\Auth\Sessao;
+use Cuidados\Rotas;
+use Cuidados\Support\Auditoria;
+use Cuidados\Support\Config;
+use Cuidados\Support\ErroHttp;
+
+/** Ciclo da requisição: segurança → sessão → rota → resposta JSON. */
+final class Kernel
+{
+    public static function atender(Requisicao $req): Resposta
+    {
+        $r = self::processar($req);
+        self::cabecalhosSeguranca($req, $r);
+        return $r;
+    }
+
+    private static function processar(Requisicao $req): Resposta
+    {
+        if ($req->metodo === 'OPTIONS') {
+            return new Resposta(204);
+        }
+        try {
+            $roteador = new Roteador();
+            Rotas::registrar($roteador);
+            [$acao, $params, $publica] = $roteador->resolver($req->metodo, $req->caminho);
+            $req->params = $params;
+
+            $sessao = Sessao::atual($req);
+            if (!$publica && $sessao === null) {
+                throw ErroHttp::naoAutenticado();
+            }
+            Auditoria::contexto($sessao['usuario']['id'] ?? null, $req->ip);
+
+            if (is_array($acao)) {
+                [$classe, $metodo] = $acao;
+                $ctl = new $classe($req, $sessao['usuario'] ?? null, $sessao['sessao_id'] ?? null);
+                return $ctl->$metodo();
+            }
+            return $acao($req);
+        } catch (ErroHttp $e) {
+            return Resposta::json(['erro' => ['codigo' => $e->codigo, 'mensagem' => $e->getMessage(), 'campos' => (object)$e->campos]], $e->status);
+        } catch (\PDOException $e) {
+            error_log('[cuidados] banco: ' . $e->getMessage());
+            return Resposta::json(['erro' => ['codigo' => 'banco', 'mensagem' => 'Estamos com instabilidade. Seus registros ficam guardados no celular e vão depois.']], 503);
+        } catch (\Throwable $e) {
+            error_log('[cuidados] ' . get_class($e) . ': ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+            $msg = Config::emTeste() ? $e->getMessage() : 'Algo deu errado. Tente de novo.';
+            return Resposta::json(['erro' => ['codigo' => 'interno', 'mensagem' => $msg]], 500);
+        }
+    }
+
+    private static function cabecalhosSeguranca(Requisicao $req, Resposta $r): void
+    {
+        $r->cabecalhos += [
+            'X-Content-Type-Options' => 'nosniff',
+            'Referrer-Policy' => 'no-referrer',
+            'X-Frame-Options' => 'DENY',
+            'Cache-Control' => $r->cabecalhos['Cache-Control'] ?? 'no-store',
+        ];
+        $origem = $req->cabecalho('origin');
+        $permitidas = (array)Config::get('cors.origens', []);
+        if ($origem !== null && in_array($origem, $permitidas, true)) {
+            $r->cabecalhos['Access-Control-Allow-Origin'] = $origem;
+            $r->cabecalhos['Access-Control-Allow-Credentials'] = 'true';
+            $r->cabecalhos['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Cuidados';
+            $r->cabecalhos['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS';
+            $r->cabecalhos['Vary'] = 'Origin';
+        }
+    }
+}

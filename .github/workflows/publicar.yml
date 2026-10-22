@@ -1,0 +1,114 @@
+# Testa e publica na KingHost a cada envio para a branch main.
+# Segredos (Settings → Secrets and variables → Actions → Secrets):
+#   FTP_SERVIDOR, FTP_USUARIO, FTP_SENHA
+# Variáveis (mesma tela → aba Variables):
+#   KINGHOST_PASTA_WWW      ex.: /www/            (pasta pública do domínio)
+#   KINGHOST_PASTA_PRIVADO  ex.: /privado/        (fora da pasta pública)
+#   URL_APP                 ex.: https://cuidados.ahvita.com
+#   FTP_PROTOCOLO           opcional: ftps (padrão) ou ftp
+# Enquanto KINGHOST_PASTA_WWW não existir, o fluxo só testa (não publica).
+name: Testar e publicar
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: publicar-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: raiz
+          MARIADB_DATABASE: cuidados
+          MARIADB_USER: cuidados
+          MARIADB_PASSWORD: cuidados
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      CUIDADOS_CONFIG: /nao-existe
+      AMBIENTE: teste
+      DB_HOST: 127.0.0.1
+      DB_NOME: cuidados
+      DB_USUARIO: cuidados
+      DB_SENHA: cuidados
+      CODIGO_CANAIS: log,email
+      CODIGO_TESTE_FIXO: '123456'
+      MIDIAS_PASTA: ${{ github.workspace }}/midias-teste
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          extensions: pdo_mysql, curl, fileinfo, mbstring
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Sintaxe PHP
+        run: find api -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
+      - name: Banco
+        run: php api/bin/instalar.php
+      - name: Teste de ponta a ponta da API
+        run: |
+          (cd api && php -S 127.0.0.1:8099 dev-router.php > /tmp/servidor.log 2>&1 &)
+          sleep 2
+          php api/tests/fluxo.php http://127.0.0.1:8099
+          php api/bin/auditoria.php
+      - name: Vocabulário, tipos e build do app
+        run: |
+          npm ci
+          npm run build
+
+  publicar:
+    needs: testes
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.KINGHOST_PASTA_WWW != ''
+    runs-on: ubuntu-latest
+    environment: producao
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Montar pacote
+        run: |
+          npm ci
+          npm run pacote:kinghost
+      - name: Enviar app web (www)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVIDOR }}
+          username: ${{ secrets.FTP_USUARIO }}
+          password: ${{ secrets.FTP_SENHA }}
+          protocol: ${{ vars.FTP_PROTOCOLO || 'ftps' }}
+          local-dir: ./pacote-kinghost/www/
+          server-dir: ${{ vars.KINGHOST_PASTA_WWW }}
+      - name: Enviar API (privado) — sem tocar em configuracao.php nem nas fotos
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVIDOR }}
+          username: ${{ secrets.FTP_USUARIO }}
+          password: ${{ secrets.FTP_SENHA }}
+          protocol: ${{ vars.FTP_PROTOCOLO || 'ftps' }}
+          local-dir: ./pacote-kinghost/privado/
+          server-dir: ${{ vars.KINGHOST_PASTA_PRIVADO }}
+          exclude: |
+            **/.git*
+            **/.git*/**
+            midias/**
+            config/configuracao.php
+      - name: Conferir se está no ar
+        if: vars.URL_APP != ''
+        run: |
+          sleep 5
+          curl -fsS "${{ vars.URL_APP }}/api/v1/saude"

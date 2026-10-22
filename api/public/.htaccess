@@ -1,0 +1,14 @@
+# API Ahvita Cuidados — Apache (KingHost)
+Options -Indexes
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  # Repassa o cabeçalho Authorization (app Android/iOS usa Bearer)
+  RewriteCond %{HTTP:Authorization} .
+  RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+  # Tudo em /api/... vai para o index.php
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteRule ^ index.php [QSA,L]
+</IfModule>
+<FilesMatch "\.(env|ini|log|sql|md)$">
+  Require all denied
+</FilesMatch>

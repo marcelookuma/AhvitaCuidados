@@ -1,0 +1,59 @@
+<?php
+declare(strict_types=1);
+
+namespace Cuidados\Http;
+
+final class Resposta
+{
+    /** @var array<string,string> */
+    public array $cabecalhos = [];
+    /** @var list<string> */
+    public array $cookies = [];
+
+    public function __construct(
+        public int $status = 200,
+        public mixed $corpo = null,
+        public ?string $arquivo = null,
+        public ?string $tipoArquivo = null
+    ) {}
+
+    public static function json(mixed $dados, int $status = 200): self
+    {
+        return new self($status, $dados);
+    }
+
+    public static function vazio(): self
+    {
+        return new self(204);
+    }
+
+    public static function arquivo(string $caminho, string $mime): self
+    {
+        $r = new self(200, null, $caminho, $mime);
+        $r->cabecalhos['Cache-Control'] = 'private, max-age=3600';
+        return $r;
+    }
+
+    public function enviar(): void
+    {
+        http_response_code($this->status);
+        foreach ($this->cabecalhos as $k => $v) {
+            header("$k: $v");
+        }
+        foreach ($this->cookies as $c) {
+            header('Set-Cookie: ' . $c, false);
+        }
+        if ($this->arquivo !== null) {
+            header('Content-Type: ' . $this->tipoArquivo);
+            header('Content-Length: ' . (string)filesize($this->arquivo));
+            header('Content-Disposition: inline');
+            readfile($this->arquivo);
+            return;
+        }
+        if ($this->status === 204) {
+            return;
+        }
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($this->corpo, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION);
+    }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "Ahvita Cuidados",
+  "short_name": "Cuidados",
+  "description": "Coordenação do cuidado, simples como uma conversa.",
+  "lang": "pt-BR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F5F1EA",
+  "theme_color": "#1F6F54",
+  "icons": [
+    { "src": "/icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

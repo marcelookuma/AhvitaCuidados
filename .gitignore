@@ -1,0 +1,7 @@
+node_modules/
+apps/web/dist/
+pacote-kinghost/
+api/config/configuracao.php
+api/midias/
+api/midias-teste/
+*.log

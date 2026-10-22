@@ -1,0 +1,13 @@
+[
+  { "termo": "\\btrabalhando\\b", "flags": "i", "use": "\"em serviço\"" },
+  { "termo": "\\bsair do trabalho\\b", "flags": "i", "use": "\"Finalizar\"" },
+  { "termo": "\\bexpediente\\b", "flags": "i", "use": "\"atendimento\"" },
+  { "termo": "\\bjornada\\b", "flags": "i", "use": "\"atendimento\"" },
+  { "termo": "\\bpatr(ão|oa|ões)\\b", "flags": "i", "use": "\"gestor(a)\" ou \"contratante\"" },
+  { "termo": "\\bbater ponto\\b|\\bponto eletr[oô]nico\\b", "flags": "i", "use": "\"registro de presença\"" },
+  { "termo": "\\bfalta(s)? (do|da|de) cuidador", "flags": "i", "use": "\"sem resposta no prazo combinado\"" },
+  { "termo": "\\bdesempenho\\b", "flags": "i", "use": "não avaliar desempenho de cuidador(a) MEI" },
+  { "termo": "\\bescala\\b", "flags": "i", "use": "\"agenda\" (escala só para CLT)" },
+  { "termo": "[Ff]am[ií]lia", "flags": "", "use": "\"Rede de Apoio\" ou o nome da pessoa" },
+  { "termo": "\\bCuidadora\\b", "flags": "", "use": "\"Cuidador(a)\"" }
+]

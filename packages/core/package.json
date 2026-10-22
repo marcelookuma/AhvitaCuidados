@@ -1,0 +1,9 @@
+{
+  "name": "@cuidados/core",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Regras, tipos e cliente da API compartilhados entre web e app Android/iOS",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts"
+}
