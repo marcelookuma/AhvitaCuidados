@@ -132,7 +132,7 @@ jobs:
           sed -i 's/^          //' envio/COMO-ENVIAR.txt
           find envio -maxdepth 3 | sort | head -40
       - name: Guardar pacote para envio manual
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: pacote-kinghost-${{ github.run_number }}
           path: envio/
