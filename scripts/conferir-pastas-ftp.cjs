@@ -5,6 +5,7 @@
  */
 const ftp = require('basic-ftp');
 const { S, U, P, PROTO, W, PV } = process.env;
+const R = process.env.R || './'; // raiz da conta, a partir de onde o FTP abre
 
 function erro(msg) {
   console.log(`::error title=Pastas do FTP::${msg}`);
@@ -23,13 +24,13 @@ function erro(msg) {
   }
   let nomes = [];
   try {
-    nomes = (await c.list('')).map((i) => `${i.isDirectory ? '[pasta]' : ''}${i.name}`);
+    nomes = (await c.list(R === './' ? '' : R)).map((i) => `${i.isDirectory ? '[pasta]' : ''}${i.name}`);
   } catch (e) {
     erro(`Não listou a pasta inicial do FTP: ${e.message}`);
   }
   c.close();
   const pastas = nomes.filter((n) => n.startsWith('[pasta]')).map((n) => n.slice(7));
-  console.log(`Pasta inicial do FTP: ${nomes.join(', ') || '(vazia)'}`);
+  console.log(`Raiz da conta (${R}): ${nomes.join(', ') || '(vazia)'}`);
   const primeira = (W || './').replace(/^\.\//, '').split('/')[0];
   const temIndex = nomes.some((n) => /^index\.(html?|php)$/i.test(n));
 

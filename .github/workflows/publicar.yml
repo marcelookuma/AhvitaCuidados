@@ -2,8 +2,9 @@
 # Segredos (Settings → Secrets and variables → Actions → Secrets):
 #   FTP_SERVIDOR, FTP_USUARIO, FTP_SENHA
 # Variáveis (mesma tela → aba Variables):
-#   KINGHOST_PASTA_WWW      / quando o FTP já abre na pasta pública (caso da KingHost);
-#                           /www/ quando o FTP mostra a pasta www
+#   KINGHOST_PASTA_WWW      pasta pública, a partir da raiz da conta (ex.: /www/)
+#   FTP_ABRE_EM             onde o FTP abre ao conectar (ex.: /www/). Padrão: /
+#                           Na KingHost o FTP abre na www, mas deixa subir com "..".
 #   KINGHOST_PASTA_PRIVADO  ex.: /cuidados_privado/ (de preferência fora da pública)
 #   PASTA_PRIVADA_DENTRO_DA_WWW  sim = você aceita que a pasta privada fique DENTRO da www
 #                           (necessário quando o FTP já abre dentro da www, como na KingHost)
@@ -107,16 +108,21 @@ jobs:
         env:
           W: ${{ vars.KINGHOST_PASTA_WWW }}
           PV: ${{ vars.KINGHOST_PASTA_PRIVADO }}
+          A: ${{ vars.FTP_ABRE_EM || '/' }}
         run: |
-          # "/" (o FTP já abre na pasta pública) vira "./"
-          rel() { local x="${1#/}"; x="${x%/}"; if [ -z "$x" ]; then echo "./"; else echo "$x/"; fi; }
-          echo "www=$(rel "$W")" >> "$GITHUB_OUTPUT"
-          echo "privado=$(rel "$PV")" >> "$GITHUB_OUTPUT"
-          w=$(rel "$W"); pv=$(rel "$PV")
-          # Pasta privada dentro da pública: caminho dela a partir da pública (ex.: _privado/)
-          if [ "$w" != "./" ]; then case "$pv" in "$w"*) echo "sub=${pv#"$w"}" >> "$GITHUB_OUTPUT" ;; esac; fi
-          echo "Pasta pública:  $(rel "$W")"
-          echo "Pasta privada:  $(rel "$PV")"
+          # Caminhos a partir da raiz da conta. FTP_ABRE_EM = onde o FTP abre (ex.: /www/).
+          node -e '
+            const p = require("path").posix, e = process.env;
+            const abs = (x) => p.resolve("/", x || "/");
+            const rel = (de, para) => { const r = p.relative(abs(de), abs(para)); return r ? r + "/" : "./"; };
+            const www = rel("/", e.W), privado = rel("/", e.PV), raiz = rel(e.A, "/");
+            const dentro = abs(e.PV).startsWith(abs(e.W) === "/" ? "/" : abs(e.W) + "/");
+            const out = [`www=${www}`, `privado=${privado}`, `raiz=${raiz}`, `dentro=${dentro ? "sim" : ""}`];
+            require("fs").appendFileSync(e.GITHUB_OUTPUT, out.join("\n") + "\n");
+            console.log(`Pasta pública (desde a raiz da conta): ${www}`);
+            console.log(`Pasta privada (desde a raiz da conta): ${privado}${dentro ? "  ← DENTRO da pública" : ""}`);
+            console.log(`O FTP abre em ${abs(e.A)}; raiz da conta a partir dali: ${raiz}`);
+          '
       - name: Montar pasta para envio manual (espelha o FTP)
         env:
           W: ${{ steps.pastas.outputs.www }}
@@ -159,32 +165,15 @@ jobs:
           PROTO: ${{ vars.FTP_PROTOCOLO || 'ftps' }}
           W: ${{ steps.pastas.outputs.www }}
           PV: ${{ steps.pastas.outputs.privado }}
+          R: ${{ steps.pastas.outputs.raiz }}
         run: |
           mkdir -p /tmp/diag && cd /tmp/diag && npm init -y >/dev/null && npm install --no-audit --no-fund basic-ftp@5.2.2 >/dev/null
           NODE_PATH=/tmp/diag/node_modules node "$GITHUB_WORKSPACE/scripts/conferir-pastas-ftp.cjs"
           sleep 60   # a KingHost recusa uma nova conexão logo em seguida
-      # A KingHost recusa uma segunda conexão logo depois da primeira. Com a pasta
-      # privada dentro da pública, tudo vai numa conexão só.
-      - name: Enviar app + API numa conexão só (pasta privada dentro da pública)
-        if: vars.ENVIO_FTP == 'sim' && steps.pastas.outputs.sub != ''
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVIDOR }}
-          username: ${{ secrets.FTP_USUARIO }}
-          password: ${{ secrets.FTP_SENHA }}
-          protocol: ${{ vars.FTP_PROTOCOLO || 'ftps' }}
-          local-dir: ./envio/${{ steps.pastas.outputs.www }}
-          server-dir: ${{ steps.pastas.outputs.www }}
-          log-level: standard
-          exclude: |
-            **/.git*
-            **/.git*/**
-            ${{ steps.pastas.outputs.sub }}midias/**
-            ${{ steps.pastas.outputs.sub }}config/configuracao.php
-      # Pasta privada fora da pública (o certo): envia a partir da raiz do FTP,
-      # também numa conexão só. O estado do envio fica na raiz, fora da área pública.
-      - name: Enviar app + API numa conexão só (a partir da raiz do FTP)
-        if: vars.ENVIO_FTP == 'sim' && steps.pastas.outputs.sub == ''
+      # Um envio só, a partir da raiz da conta (a KingHost recusa uma 2ª conexão logo em seguida).
+      # O pacote espelha a raiz: <www>/… e <pasta privada>/…
+      - name: Enviar app + API (uma conexão, a partir da raiz da conta)
+        if: vars.ENVIO_FTP == 'sim'
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVIDOR }}
@@ -192,7 +181,7 @@ jobs:
           password: ${{ secrets.FTP_SENHA }}
           protocol: ${{ vars.FTP_PROTOCOLO || 'ftps' }}
           local-dir: ./envio/
-          server-dir: ./
+          server-dir: ${{ steps.pastas.outputs.raiz }}
           log-level: standard
           exclude: |
             **/.git*
