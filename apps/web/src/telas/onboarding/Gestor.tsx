@@ -98,7 +98,7 @@ export function OnboardingGestor() {
             </Campo>
             <Campo rotulo="Gênero" ajuda="Opcional" erro={erros.genero}><input value={d.genero} onChange={mudar('genero')} placeholder="Como se identifica" /></Campo>
           </div>
-          <Campo rotulo="CPF da pessoa cuidada" ajuda="Opcional" erro={erros.cpf}><input value={d.cpf} onChange={mudar('cpf')} inputMode="numeric" /></Campo>
+          <Campo rotulo="CPF da pessoa cuidada" ajuda="Opcional: pode deixar em branco" erro={erros.cpf}><input value={d.cpf} onChange={mudar('cpf')} inputMode="numeric" /></Campo>
           <Campo rotulo="Sua relação com a pessoa" erro={erros.relacao}>
             <select value={d.relacao} onChange={mudar('relacao')}>
               {['Tutor(a)', 'Filho(a)', 'Cônjuge', 'Neto(a)', 'Irmão/Irmã', 'Mãe/Pai', 'Responsável legal', 'Outro'].map((r) => <option key={r}>{r}</option>)}
