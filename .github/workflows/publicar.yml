@@ -88,6 +88,7 @@ jobs:
         env:
           KINGHOST_PASTA_WWW: ${{ vars.KINGHOST_PASTA_WWW }}
           KINGHOST_PASTA_PRIVADO: ${{ vars.KINGHOST_PASTA_PRIVADO }}
+          KINGHOST_PRIVADO_NA_AREA_PUBLICA: ${{ vars.KINGHOST_PRIVADO_NA_AREA_PUBLICA }}
           URL_APP: ${{ vars.URL_APP }}
         run: |
           npm ci
@@ -146,3 +147,19 @@ jobs:
         run: |
           sleep 5
           curl -fsS "${{ vars.URL_APP }}/api/v1/saude"
+
+      - name: Conferir se a pasta privada está bloqueada
+        if: vars.URL_APP != '' && vars.KINGHOST_PRIVADO_NA_AREA_PUBLICA == 'sim'
+        env:
+          W: ${{ steps.pastas.outputs.www }}
+          PV: ${{ steps.pastas.outputs.privado }}
+        run: |
+          sub="${PV#"$W"}"
+          for arq in config/configuracao.php src/bootstrap.php; do
+            codigo=$(curl -s -o /dev/null -w '%{http_code}' "${{ vars.URL_APP }}/${sub}${arq}")
+            echo "/${sub}${arq} → HTTP $codigo"
+            if [ "$codigo" != "403" ] && [ "$codigo" != "404" ]; then
+              echo "::error title=Pasta privada exposta::/${sub}${arq} respondeu $codigo. Tire o site do ar e fale com o suporte."
+              exit 1
+            fi
+          done

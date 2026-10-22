@@ -40,13 +40,24 @@ const pastaWww = process.env.KINGHOST_PASTA_WWW || '/www/';
 const pastaPrivado = process.env.KINGHOST_PASTA_PRIVADO || '/privado/';
 const absWww = posix.resolve('/', pastaWww);
 const absPrivado = posix.resolve('/', pastaPrivado);
-if (absPrivado === absWww || absPrivado.startsWith(absWww + '/')) {
-  console.error(`✗ A pasta privada (${pastaPrivado}) não pode ficar dentro da pasta pública (${pastaWww}).`);
+const naAreaPublica = absPrivado === absWww || absPrivado.startsWith(absWww + '/');
+const permitirNaAreaPublica = process.env.KINGHOST_PRIVADO_NA_AREA_PUBLICA === 'sim';
+if (absPrivado === absWww) {
+  console.error('✗ A pasta privada não pode ser a própria pasta pública.');
   process.exit(1);
 }
-if (absPrivado.startsWith('/www/') || absPrivado.startsWith('/public_html/')) {
-  console.warn(`⚠ ${pastaPrivado} parece estar dentro da área pública de outro site. Prefira a raiz do FTP (ex.: /cuidados_privado/).`);
+if (naAreaPublica && !permitirNaAreaPublica) {
+  console.error(`✗ A pasta privada (${pastaPrivado}) está dentro da pasta pública (${pastaWww}).`);
+  console.error('  Use uma pasta fora da área pública ou, como solução temporária, defina KINGHOST_PRIVADO_NA_AREA_PUBLICA=sim.');
+  process.exit(1);
 }
+// Bloqueio extra: a pasta privada dentro da pública nunca é servida pelo Apache.
+const bloqueioPrivado = naAreaPublica
+  ? `  # Pasta privada dentro da área pública (solução temporária): acesso proibido
+  RewriteRule ^${posix.relative(absWww, absPrivado).replace(/[.]/g, '\\.')}(/|$) - [F,L]
+`
+  : '';
+if (naAreaPublica) console.warn(`⚠ Pasta privada DENTRO da área pública (${absPrivado}), protegida por .htaccess. Solução temporária.`);
 const relativo = posix.relative(posix.join(absWww, 'api'), absPrivado);
 writeFileSync(join(www, 'api/privado.php'), `<?php\n// Gerado pelo empacotador: caminho da pasta privada a partir daqui.\nreturn '${relativo}';\n`);
 console.log(`· pasta privada: ${absPrivado} (a partir de www/api: ${relativo})`);
@@ -62,7 +73,7 @@ writeFileSync(join(www, '.htaccess'), `# Ahvita Cuidados — app web
 Options -Indexes
 <IfModule mod_rewrite.c>
   RewriteEngine On
-${regraHost}  # Sempre HTTPS (dados de saúde)
+${bloqueioPrivado}${regraHost}  # Sempre HTTPS (dados de saúde)
   RewriteCond %{HTTPS} !=on
   RewriteCond %{HTTP:X-Forwarded-Proto} !https
   RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
