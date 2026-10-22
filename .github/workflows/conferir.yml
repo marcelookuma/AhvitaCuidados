@@ -18,6 +18,11 @@ jobs:
     steps:
       - name: API respondendo
         run: |
+          for u in /api/v1/saude "/api/index.php" "/api/privado.php"; do
+            echo "== $u"
+            curl -sS -o /tmp/r.txt -w 'HTTP %{http_code} | %{content_type}\n' "${{ vars.URL_APP }}$u" || true
+            head -c 400 /tmp/r.txt; echo
+          done
           curl -fsS "${{ vars.URL_APP }}/api/v1/saude"
           echo
       - name: App abrindo
