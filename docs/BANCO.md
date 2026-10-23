@@ -22,11 +22,14 @@ erDiagram
   empresas |o--o{ pessoas_cuidadas : clientes
   pessoas_cuidadas ||--o{ alertas : gera
   usuarios ||--o{ consentimentos : dá
+  admin_usuarios ||--o{ admin_sessoes : tem
+  usuarios ||--o{ log_acessos : "acessos e usos"
+  usuarios ||--o{ uso_diario : "leituras somadas por dia"
 ```
 
 | Tabela | Para quê | Notas |
 |---|---|---|
-| `usuarios` | quem usa o app | CPF, telefone, e-mail e `google_sub` (conta Google) únicos; exclusão = anonimização |
+| `usuarios` | quem usa o app | CPF, telefone, e-mail e `google_sub` (conta Google) únicos; exclusão = anonimização; `bloqueado_em` (bloqueio pelo painel) |
 | `otp_codigos` | código de acesso | só o HMAC do código; tentativas; IP |
 | `sessoes` | sessões | só SHA-256 do token |
 | `empresas`, `empresa_membros`, `empresa_cuidadores` | empresa, equipe administrativa e rede de cuidadores(as) | `modalidade` (mei/autonomo/clt) decide a regra de agenda |
@@ -44,6 +47,10 @@ erDiagram
 | `consentimentos` | LGPD | termos, dados_saude, responsavel_legal, versionados |
 | `auditoria` | trilha encadeada por hash | sem dado de saúde |
 | `eventos_saida` | outbox | base para push/WhatsApp/WebSocket |
+| `admin_usuarios` | equipe do painel `/admin` | e-mail + `google_sub` do 1º acesso; papel leitura/operador/dono (`003_admin.sql`) |
+| `admin_sessoes` | sessões do painel | só o SHA-256 do token; 8 h, cai após 30 min parada |
+| `log_acessos` | log de acessos e usos de todos os perfis e do painel | entradas/saídas, escritas, erros, exportações e tudo do painel; quem, perfil, rota (padrão), recurso, status, IP, aparelho; **sem corpo nem dado de saúde**; guarda ≥ 6 meses |
+| `uso_diario` | leituras de rotina somadas por dia | (dia, usuário, perfil, rota, pessoa/empresa) → contagem; **sem horário** |
 | `esquema_versoes` | migrações aplicadas | `bin/instalar.php` aplica só as novas |
 
 **Migrações**: novos arquivos `db/002_*.sql`, `db/003_*.sql`… Cada um termina com `INSERT IGNORE INTO esquema_versoes`.

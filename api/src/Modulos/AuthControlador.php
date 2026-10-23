@@ -11,6 +11,7 @@ use Cuidados\Http\Resposta;
 use Cuidados\Support\Auditoria;
 use Cuidados\Support\Bd;
 use Cuidados\Support\ErroHttp;
+use Cuidados\Support\LogAcesso;
 use Cuidados\Support\Tempo;
 use Cuidados\Support\Ulid;
 use Cuidados\Support\Valida;
@@ -124,9 +125,15 @@ final class AuthControlador extends Controlador
     /** @param array<string,mixed> $usuario */
     private function abrirSessao(array $usuario, bool $novo, ?string $disp, string $via): Resposta
     {
+        if (($usuario['bloqueado_em'] ?? null) !== null) {
+            LogAcesso::usuario($usuario['id'], null);
+            throw ErroHttp::proibido('Esta conta está bloqueada. Fale com o suporte do Ahvita Cuidados.');
+        }
         $s = Sessao::criar($usuario['id'], $disp ?? $this->req->cabecalho('user-agent'));
         Auditoria::contexto($usuario['id'], $this->req->ip);
         Auditoria::registrar($novo ? 'conta.criada' : 'sessao.entrou', 'usuario', $usuario['id'], null, ['via' => $via]);
+        LogAcesso::usuario($usuario['id'], $s['id']);
+        LogAcesso::evento($novo ? 'conta_criada' : 'entrou');
 
         $r = Resposta::json(['token' => $s['token'], 'usuario' => Formata::eu($usuario), 'novo' => $novo]);
         Sessao::cookie($r, $s['token']);
@@ -137,6 +144,7 @@ final class AuthControlador extends Controlador
     public function sair(): Resposta
     {
         if ($this->sessaoId !== null) Sessao::revogar($this->sessaoId);
+        LogAcesso::evento('saiu');
         $r = Resposta::vazio();
         Sessao::cookie($r, '', true);
         return $r;

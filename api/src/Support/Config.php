@@ -39,6 +39,10 @@ final class Config
         'termos.versao' => '2026-10',
         'tarefas.automaticas' => true,       // roda as tarefas dentro da API (hospedagem sem cron)
         'tarefas.chave' => '',               // para POST /sistema/tarefas (vazio = desligado)
+        'admin.donos' => [],                 // e-mails Google que sempre entram no /admin como "dono"
+        'admin.sessao_horas' => 8,           // sessão do painel: duração máxima
+        'admin.inatividade_min' => 30,       // e cai depois de X min sem uso
+        'logs.dias' => 365,                  // log de acessos: mínimo 183 (Marco Civil, art. 15)
     ];
 
     public static function carregar(?string $arquivo = null): void

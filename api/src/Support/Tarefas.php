@@ -29,6 +29,7 @@ final class Tarefas
             ['a' => Tempo::agoraSql(), 'lim' => Tempo::agora()->modify('-7 days')->format('Y-m-d H:i:s')]);
         Bd::exec('DELETE FROM otp_codigos WHERE criado_em < :lim', ['lim' => Tempo::agora()->modify('-2 days')->format('Y-m-d H:i:s')]);
         Bd::exec('DELETE FROM sessoes WHERE expira_em < :lim', ['lim' => Tempo::agora()->modify('-30 days')->format('Y-m-d H:i:s')]);
+        LogAcesso::limpar();
         self::marcar();
         return ['migracoes' => $migr, 'alertas' => $n];
     }
@@ -55,6 +56,13 @@ final class Tarefas
             flock($trava, LOCK_UN);
             fclose($trava);
         }
+    }
+
+    /** Quando as tarefas rodaram pela última vez (para o painel /admin). */
+    public static function ultimaExecucao(): ?int
+    {
+        $m = self::arquivoMarca();
+        return is_file($m) ? (int)filemtime($m) : null;
     }
 
     private static function marcar(): void

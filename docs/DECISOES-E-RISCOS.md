@@ -41,12 +41,15 @@
 6. Termos de uso e política de privacidade em `apps/web/public/` são **minutas**.
 7. **Google** (Continuar com o Google): o Google fica sabendo que a pessoa usa o app e quando entra; o app recebe só nome, e-mail e o identificador da conta (`google_sub`). Nenhum dado de saúde vai ao Google. Informar na política (já incluído na minuta) e no RIPD como compartilhamento com controlador independente. O vínculo é apagado na exclusão da conta.
 
+8. **Painel `/admin` e log de acessos** (`docs/ADMIN.md`): o painel mostra cadastro, vínculos e contagens, **nunca** conteúdo de saúde; toda leitura do painel vai para o log e toda mudança vai para a auditoria com justificativa. O log guarda IP e data/hora de todos os perfis por ≥ 6 meses (Marco Civil, art. 15) e permite responder ao titular **quem acessou seus dados**. Base legal a registrar no RIPD: cumprimento de obrigação legal (Marco Civil) e segurança (legítimo interesse). Informar na política de privacidade (minuta ainda não cita o log).
+9. ⚖️ **Log de acessos não é ferramenta de gestão de cuidador(a)**: o painel não calcula horas, tempo conectado, atrasos nem ranking, e as leituras de rotina ficam só somadas por dia, sem horário. Nunca entregar relatório do log a gestor(a) ou empresa para acompanhar cuidador(a) MEI/autônomo(a): seria prova de controle (subordinação). Pedido judicial ou do titular segue pelo canal do encarregado(a).
+
 ## 5. Custos a acompanhar
 - Twilio Verify cobra por verificação enviada: o login por e-mail é gratuito. Sessão de 30 dias reduz pedidos de código.
 - Consulta periódica gera tráfego proporcional a conversas abertas; é o primeiro item a migrar na fase 2.
 
 ## 6. Fora do MVP (do wireframe v5)
-Rede de Apoio com telas próprias (hoje usa o painel de acompanhamento, conforme permissões) · Pessoa cuidada ("como me sinto") · Médico(a) e Equipe de saúde com prontuário e isolamento de psicologia · Itens de enfermagem na tela do(a) cuidador(a) (o registro `procedimento` já existe na API, restrito à enfermagem) · Pele com mapa corporal · Despesas com rateio e reembolso · Tarefas da Rede · Capacitação · Carteira profissional · Exames · Backoffice · Push nativo · Transcrição de áudio e leitura por foto · Pagamentos.
+Rede de Apoio com telas próprias (hoje usa o painel de acompanhamento, conforme permissões) · Pessoa cuidada ("como me sinto") · Médico(a) e Equipe de saúde com prontuário e isolamento de psicologia · Itens de enfermagem na tela do(a) cuidador(a) (o registro `procedimento` já existe na API, restrito à enfermagem) · Pele com mapa corporal · Despesas com rateio e reembolso · Tarefas da Rede · Capacitação · Carteira profissional · Exames · Push nativo · Transcrição de áudio e leitura por foto · Pagamentos.
 
 ## 7. Relação com a v1 anterior
 Esta versão **substitui** a v1 (Node.js + MySQL para a Hospedagem Node.js). Mudanças: API reescrita em PHP para o plano de revenda; inclusão da versão Conversa como padrão do(a) cuidador(a), do perfil Empresa e da conversa direta empresa ↔ cuidador(a); núcleo de regras extraído em `packages/core` para o app nativo.

@@ -9,6 +9,8 @@ final class Resposta
     public array $cabecalhos = [];
     /** @var list<string> */
     public array $cookies = [];
+    /** Corpo pronto (ex.: CSV) em vez de JSON. */
+    public ?string $texto = null;
 
     public function __construct(
         public int $status = 200,
@@ -31,6 +33,16 @@ final class Resposta
     {
         $r = new self(200, null, $caminho, $mime);
         $r->cabecalhos['Cache-Control'] = 'private, max-age=3600';
+        return $r;
+    }
+
+    /** Download de texto (ex.: CSV do log de acessos). */
+    public static function download(string $conteudo, string $mime, string $nome): self
+    {
+        $r = new self(200);
+        $r->texto = $conteudo;
+        $r->cabecalhos['Content-Type'] = $mime;
+        $r->cabecalhos['Content-Disposition'] = 'attachment; filename="' . preg_replace('/[^A-Za-z0-9._-]/', '_', $nome) . '"';
         return $r;
     }
 
@@ -57,6 +69,10 @@ final class Resposta
             return;
         }
         if ($this->status === 204) {
+            return;
+        }
+        if ($this->texto !== null) {
+            echo $this->texto;
             return;
         }
         header('Content-Type: application/json; charset=utf-8');

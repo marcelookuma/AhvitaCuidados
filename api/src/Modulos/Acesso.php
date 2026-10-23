@@ -5,6 +5,7 @@ namespace Cuidados\Modulos;
 
 use Cuidados\Support\Bd;
 use Cuidados\Support\ErroHttp;
+use Cuidados\Support\LogAcesso;
 
 /**
  * Autorização central: TODA leitura ou escrita de dados de uma pessoa
@@ -29,11 +30,13 @@ final class Acesso
         if ($v !== null) {
             $perm = json_decode((string)$v['permissoes'], true) ?: [];
             $cuidador = $v['papel'] === 'cuidador' || (int)$v['atua_como_cuidador'] === 1;
+            LogAcesso::perfil((string)$v['papel'], $pessoaId);
             return ['pessoa' => $p, 'papel' => $v['papel'], 'vinculo' => $v, 'permissoes' => $perm, 'cuidador' => $cuidador, 'empresa_id' => $v['empresa_id']];
         }
 
         if ($p['empresa_id'] !== null && self::membroEmpresa($usuario['id'], $p['empresa_id']) !== null) {
             $perm = json_decode((string)($p['empresa_permissoes'] ?? '[]'), true) ?: Permissoes::padrao('empresa');
+            LogAcesso::perfil('empresa', $pessoaId, $p['empresa_id']);
             return ['pessoa' => $p, 'papel' => 'empresa', 'vinculo' => null, 'permissoes' => Permissoes::limpar($perm, 'empresa'), 'cuidador' => false, 'empresa_id' => $p['empresa_id']];
         }
         throw ErroHttp::naoEncontrado('Pessoa não encontrada.');
@@ -71,6 +74,7 @@ final class Acesso
         $e = Bd::um('SELECT * FROM empresas WHERE id = :id', ['id' => $empresaId]);
         if ($e === null) throw ErroHttp::naoEncontrado('Empresa não encontrada.');
         $e['meu_papel'] = $m['papel'];
+        LogAcesso::perfil('empresa', null, $empresaId);
         return $e;
     }
 
