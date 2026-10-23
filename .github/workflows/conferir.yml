@@ -8,12 +8,36 @@ on:
     workflows: [Testar e publicar]
     types: [completed]
 
+permissions:
+  actions: read
+  contents: read
+
 jobs:
-  conferir:
+  # Um envio para a main só TESTA (a etapa "publicar" fica pulada sem PUBLICAR_AUTOMATICO).
+  # Conferir nesse caso acusaria erro à toa: o servidor ainda tem a versão anterior.
+  houve-publicacao:
     if: >-
       vars.URL_APP != '' &&
       (github.event_name == 'workflow_dispatch' ||
        (github.event.workflow_run.conclusion == 'success' && vars.ENVIO_FTP == 'sim'))
+    runs-on: ubuntu-24.04
+    outputs:
+      sim: ${{ steps.ver.outputs.sim }}
+    steps:
+      - id: ver
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then echo "sim=sim" >> "$GITHUB_OUTPUT"; exit 0; fi
+          r=$(gh api "repos/${{ github.repository }}/actions/runs/$RUN_ID/jobs" --jq '.jobs[] | select(.name == "publicar") | .conclusion')
+          echo "Etapa publicar: ${r:-não existe}"
+          if [ "$r" = "success" ]; then echo "sim=sim" >> "$GITHUB_OUTPUT"
+          else echo "::notice title=Nada publicado::Este envio só foi testado. Para publicar: Actions → Testar e publicar → Run workflow."; fi
+
+  conferir:
+    needs: houve-publicacao
+    if: needs.houve-publicacao.outputs.sim == 'sim'
     runs-on: ubuntu-24.04
     steps:
       - name: API respondendo
@@ -31,7 +55,14 @@ jobs:
         run: |
           curl -fsS -o /dev/null -w 'index.html → HTTP %{http_code}\n' "${{ vars.URL_APP }}/"
           curl -fsSL -o /tmp/admin.html -w 'admin/ → HTTP %{http_code}\n' "${{ vars.URL_APP }}/admin/"
-          grep -q 'Painel de administração' /tmp/admin.html || { echo "::error title=Painel /admin::/admin/ não abriu a página do painel"; exit 1; }
+          if ! grep -q 'Painel de administração' /tmp/admin.html; then
+            if grep -q '<title>Ahvita Cuidados</title>' /tmp/admin.html; then
+              echo "::error title=Painel /admin::/admin/ abriu o app, não o painel: a pasta www/admin/ não está no servidor. Publique (Actions → Testar e publicar → Run workflow) ou envie a pasta admin pelo FileZilla."
+            else
+              echo "::error title=Painel /admin::/admin/ não abriu a página do painel (resposta inesperada)."
+            fi
+            exit 1
+          fi
       - name: Pasta privada bloqueada
         if: (vars.PASTA_PRIVADA_DENTRO_DA_WWW == 'sim' || vars.KINGHOST_PRIVADO_NA_AREA_PUBLICA == 'sim')
         env:
