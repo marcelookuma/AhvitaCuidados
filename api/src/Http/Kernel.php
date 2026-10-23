@@ -8,6 +8,7 @@ use Cuidados\Rotas;
 use Cuidados\Support\Auditoria;
 use Cuidados\Support\Config;
 use Cuidados\Support\ErroHttp;
+use Cuidados\Support\LogAcesso;
 use Cuidados\Support\Tarefas;
 
 /** Ciclo da requisição: segurança → sessão → rota → resposta JSON. */
@@ -18,12 +19,16 @@ final class Kernel
         if ($req->metodo !== 'OPTIONS') {
             Tarefas::seVencidas(); // hospedagem sem cron: a API cuida das tarefas periódicas
         }
-        $r = self::processar($req);
+        $inicio = (float)($_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true));
+        LogAcesso::reiniciar();
+        $rota = null;
+        $r = self::processar($req, $rota);
         self::cabecalhosSeguranca($req, $r);
+        LogAcesso::gravar($req, $r->status, $rota, $req->params, $inicio);
         return $r;
     }
 
-    private static function processar(Requisicao $req): Resposta
+    private static function processar(Requisicao $req, ?string &$rota): Resposta
     {
         if ($req->metodo === 'OPTIONS') {
             return new Resposta(204);
@@ -31,14 +36,17 @@ final class Kernel
         try {
             $roteador = new Roteador();
             Rotas::registrar($roteador);
-            [$acao, $params, $publica] = $roteador->resolver($req->metodo, $req->caminho);
+            [$acao, $params, $publica] = $roteador->resolver($req->metodo, $req->caminho, $rota);
             $req->params = $params;
 
-            $sessao = Sessao::atual($req);
+            // O painel /admin tem sessão própria (Google + lista de administradores):
+            // a sessão do app nunca vale lá, e a do painel nunca vale no app.
+            $sessao = str_starts_with((string)$rota, '/admin/') ? null : Sessao::atual($req);
             if (!$publica && $sessao === null) {
                 throw ErroHttp::naoAutenticado();
             }
             Auditoria::contexto($sessao['usuario']['id'] ?? null, $req->ip);
+            LogAcesso::usuario($sessao['usuario']['id'] ?? null, $sessao['sessao_id'] ?? null);
 
             if (is_array($acao)) {
                 [$classe, $metodo] = $acao;
@@ -71,7 +79,7 @@ final class Kernel
         if ($origem !== null && in_array($origem, $permitidas, true)) {
             $r->cabecalhos['Access-Control-Allow-Origin'] = $origem;
             $r->cabecalhos['Access-Control-Allow-Credentials'] = 'true';
-            $r->cabecalhos['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Cuidados';
+            $r->cabecalhos['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Cuidados, X-Cuidados-Admin';
             $r->cabecalhos['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS';
             $r->cabecalhos['Vary'] = 'Origin';
         }

@@ -12,6 +12,7 @@ if (str_starts_with($uri, '/api/')) {
 $dist = realpath(__DIR__ . '/../apps/web/dist');
 if ($dist) {
     $arq = realpath($dist . $uri);
+    if ($arq && is_dir($arq) && is_file($arq . '/index.html')) $arq .= '/index.html'; // /admin/ → admin/index.html
     if ($arq && str_starts_with($arq, $dist) && is_file($arq)) {
         $tipos = ['js' => 'text/javascript', 'css' => 'text/css', 'svg' => 'image/svg+xml', 'png' => 'image/png',
             'webmanifest' => 'application/manifest+json', 'json' => 'application/json', 'html' => 'text/html', 'woff2' => 'font/woff2'];

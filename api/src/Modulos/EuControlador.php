@@ -194,7 +194,19 @@ final class EuControlador extends Controlador
         if (($this->corpo()['confirmar'] ?? '') !== 'EXCLUIR') {
             throw ErroHttp::validacao(['confirmar' => 'Digite EXCLUIR para confirmar']);
         }
-        $uid = $this->uid();
+        self::excluirConta($this->uid());
+        $r = Resposta::vazio();
+        Sessao::cookie($r, '', true);
+        return $r;
+    }
+
+    /**
+     * Exclusão (anonimização) de uma conta. Usada pela própria pessoa (POST /eu/excluir)
+     * e pelo painel /admin quando o titular pede pelo suporte (LGPD, art. 18).
+     * @param array<string,mixed> $dadosAuditoria
+     */
+    public static function excluirConta(string $uid, array $dadosAuditoria = []): void
+    {
         $soEu = Bd::todos(
             "SELECT v.pessoa_id FROM vinculos v WHERE v.usuario_id = :u AND v.papel = 'gestor' AND v.status = 'ativo'
                AND (SELECT COUNT(*) FROM vinculos v2 WHERE v2.pessoa_id = v.pessoa_id AND v2.papel = 'gestor' AND v2.status = 'ativo') = 1",
@@ -203,7 +215,7 @@ final class EuControlador extends Controlador
         if ($soEu !== []) {
             throw ErroHttp::conflito('unico_gestor', 'Você é o(a) único(a) gestor(a) de uma pessoa cuidada. Passe a gestão para alguém ou exclua os dados dela antes.');
         }
-        Bd::transacao(function () use ($uid) {
+        Bd::transacao(function () use ($uid, $dadosAuditoria) {
             $agora = Tempo::agoraSql();
             Bd::exec("UPDATE vinculos SET status = 'encerrado', encerrado_em = :a WHERE usuario_id = :u AND status = 'ativo'", ['a' => $agora, 'u' => $uid]);
             Bd::exec("UPDATE empresa_cuidadores SET status = 'encerrado', encerrado_em = :a WHERE usuario_id = :u", ['a' => $agora, 'u' => $uid]);
@@ -216,10 +228,7 @@ final class EuControlador extends Controlador
                 ['a' => $agora, 'a2' => $agora, 'u' => $uid]
             );
             Sessao::revogarTodas($uid);
-            Auditoria::registrar('conta.excluida', 'usuario', $uid);
+            Auditoria::registrar('conta.excluida', 'usuario', $uid, null, $dadosAuditoria);
         });
-        $r = Resposta::vazio();
-        Sessao::cookie($r, '', true);
-        return $r;
     }
 }

@@ -116,3 +116,38 @@ Base: `https://cuidados.ahvita.com/api/index.php?r=` (funciona em qualquer servi
 |---|---|---|---|
 | POST | `/midias` | multipart `arquivo` + `pessoa_id` ou `conversa_id` | foto (jpeg/png/webp/heic) ou áudio (webm/ogg/m4a/mp3), até 8 MB |
 | GET | `/midias/{id}` | — | só para quem tem acesso; foto exige `fotos` |
+
+## Painel de administração (`/admin/*`)
+Sessão própria, separada da do app: cookie `cuidados_admin` (httpOnly, `SameSite=Strict`, 8 h, cai após 30 min parada), **sem Bearer**. Toda escrita exige `X-Cuidados-Admin: 1`. A sessão do app nunca abre o painel e a do painel nunca abre o app. Papéis: **leitura** < **operador** < **dono**. Ações com 🖊 exigem `{motivo}` (mín. 10 letras), gravado na auditoria com o e-mail de quem fez. Detalhes em `docs/ADMIN.md`.
+
+| Método | Caminho | Papel | Corpo / filtros | Observação |
+|---|---|---|---|---|
+| GET | `/admin/config` | público | — | `google` (client_id), `configurado` |
+| POST | `/admin/entrar` | público | `{credencial}` | ID token do Google; e-mail confirmado e na lista; 10 recusas/15 min por IP → 429 |
+| POST | `/admin/sair` | qualquer | — | |
+| GET | `/admin/eu` | leitura | — | |
+| GET | `/admin/painel` | leitura | — | números, segurança 24 h, série de 30 dias |
+| GET | `/admin/uso` | leitura | `dias` | pessoas por dia e perfil; rotas mais usadas (sem horários) |
+| GET | `/admin/sistema` | leitura | — | versões, esquema, tarefas, tabelas; `erros_php` só operador+ |
+| POST | `/admin/sistema/tarefas` | operador | — | roda migrações, alertas e limpezas |
+| GET | `/admin/usuarios` | leitura | `q, papel, status, pagina` | |
+| GET | `/admin/usuarios/{id}` | leitura | — | vínculos, empresas, sessões, consentimentos, uso 30 d |
+| PATCH | `/admin/usuarios/{id}` | operador 🖊 | `{nome?, email?, telefone?}` | mudou forma de entrar → sessões caem |
+| POST | `/admin/usuarios/{id}/bloquear` · `/desbloquear` | operador 🖊 | — | bloqueada não entra e perde as sessões |
+| POST | `/admin/usuarios/{id}/encerrar-sessoes` | operador 🖊 | — | celular perdido |
+| POST | `/admin/usuarios/{id}/desvincular-google` | operador 🖊 | — | |
+| POST | `/admin/usuarios/{id}/excluir` | dono 🖊 | `{confirmar:"EXCLUIR"}` | mesma regra do `/eu/excluir` (LGPD art. 18) |
+| GET | `/admin/pessoas` | leitura | `q, arranjo, status, pagina` | sem conteúdo de saúde |
+| GET | `/admin/pessoas/{id}` | leitura | — | vínculos, contagens, consentimentos, **quem acessou (30 d)** |
+| POST | `/admin/vinculos/{id}/encerrar` | operador 🖊 | — | 409 `unico_gestor` |
+| POST | `/admin/vinculos/{id}/tornar-gestor` | dono 🖊 | — | só Rede de Apoio (409 `so_rede`) |
+| GET | `/admin/empresas` · `/admin/empresas/{id}` | leitura | `q, pagina` | sem horas por cuidador(a) |
+| GET | `/admin/convites` | leitura | `status, pagina` | código mascarado |
+| POST | `/admin/convites/{id}/revogar` | operador 🖊 | — | |
+| GET | `/admin/logs` | leitura | `ator, usuario, admin, pessoa, empresa, perfil, evento, rota, status (2xx/4xx/5xx/erro/NNN), ip, metodo, sessao, de, ate, pagina` | |
+| GET | `/admin/logs/csv` | operador | mesmos filtros | até 50 mil linhas; a exportação vai para a auditoria |
+| GET | `/admin/auditoria` | leitura | `acao, usuario, pessoa, entidade, de, ate, pagina` | |
+| POST | `/admin/auditoria/verificar` | leitura | — | confere a cadeia de hashes |
+| GET | `/admin/admins` | leitura | — | |
+| POST | `/admin/admins` | dono | `{email, nome?, papel}` | |
+| PATCH | `/admin/admins/{id}` | dono | `{papel?, ativo?, liberar_google?}` | ninguém muda a si mesmo nem os donos da configuração |

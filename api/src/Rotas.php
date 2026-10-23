@@ -4,6 +4,10 @@ declare(strict_types=1);
 namespace Cuidados;
 
 use Cuidados\Http\Roteador;
+use Cuidados\Modulos\Admin\AcessoAdmin;
+use Cuidados\Modulos\Admin\CadastrosAdmin as Cad;
+use Cuidados\Modulos\Admin\LogsAdmin;
+use Cuidados\Modulos\Admin\VisaoAdmin;
 use Cuidados\Modulos\AgendaControlador as Agenda;
 use Cuidados\Modulos\AuthControlador as Auth;
 use Cuidados\Modulos\ConversasControlador as Conv;
@@ -99,6 +103,50 @@ final class Rotas
         // Fotos e áudios
         $r->add('POST', '/midias', [Midias::class, 'enviar']);
         $r->add('GET', '/midias/{id}', [Midias::class, 'ver']);
+
+        self::admin($r);
+    }
+
+    /**
+     * Painel de administração (cuidados.ahvita.com/admin). "Públicas" para o Kernel
+     * porque têm sessão própria: cada ação confere a sessão do painel e o papel.
+     */
+    private static function admin(Roteador $r): void
+    {
+        $r->add('GET', '/admin/config', [AcessoAdmin::class, 'config'], true);
+        $r->add('POST', '/admin/entrar', [AcessoAdmin::class, 'entrar'], true);
+        $r->add('POST', '/admin/sair', [AcessoAdmin::class, 'sair'], true);
+        $r->add('GET', '/admin/eu', [AcessoAdmin::class, 'eu'], true);
+        $r->add('GET', '/admin/admins', [AcessoAdmin::class, 'listar'], true);
+        $r->add('POST', '/admin/admins', [AcessoAdmin::class, 'criar'], true);
+        $r->add('PATCH', '/admin/admins/{id}', [AcessoAdmin::class, 'atualizar'], true);
+
+        $r->add('GET', '/admin/painel', [VisaoAdmin::class, 'painel'], true);
+        $r->add('GET', '/admin/uso', [VisaoAdmin::class, 'uso'], true);
+        $r->add('GET', '/admin/sistema', [VisaoAdmin::class, 'sistema'], true);
+        $r->add('POST', '/admin/sistema/tarefas', [VisaoAdmin::class, 'tarefas'], true);
+        $r->add('POST', '/admin/auditoria/verificar', [VisaoAdmin::class, 'verificarAuditoria'], true);
+
+        $r->add('GET', '/admin/usuarios', [Cad::class, 'usuarios'], true);
+        $r->add('GET', '/admin/usuarios/{id}', [Cad::class, 'usuario'], true);
+        $r->add('PATCH', '/admin/usuarios/{id}', [Cad::class, 'corrigirUsuario'], true);
+        $r->add('POST', '/admin/usuarios/{id}/bloquear', [Cad::class, 'bloquear'], true);
+        $r->add('POST', '/admin/usuarios/{id}/desbloquear', [Cad::class, 'desbloquear'], true);
+        $r->add('POST', '/admin/usuarios/{id}/encerrar-sessoes', [Cad::class, 'encerrarSessoes'], true);
+        $r->add('POST', '/admin/usuarios/{id}/desvincular-google', [Cad::class, 'desvincularGoogle'], true);
+        $r->add('POST', '/admin/usuarios/{id}/excluir', [Cad::class, 'excluirUsuario'], true);
+        $r->add('GET', '/admin/pessoas', [Cad::class, 'pessoas'], true);
+        $r->add('GET', '/admin/pessoas/{id}', [Cad::class, 'pessoa'], true);
+        $r->add('POST', '/admin/vinculos/{id}/encerrar', [Cad::class, 'encerrarVinculo'], true);
+        $r->add('POST', '/admin/vinculos/{id}/tornar-gestor', [Cad::class, 'tornarGestor'], true);
+        $r->add('GET', '/admin/empresas', [Cad::class, 'empresas'], true);
+        $r->add('GET', '/admin/empresas/{id}', [Cad::class, 'empresa'], true);
+        $r->add('GET', '/admin/convites', [Cad::class, 'convites'], true);
+        $r->add('POST', '/admin/convites/{id}/revogar', [Cad::class, 'revogarConvite'], true);
+
+        $r->add('GET', '/admin/logs', [LogsAdmin::class, 'listar'], true);
+        $r->add('GET', '/admin/logs/csv', [LogsAdmin::class, 'csv'], true);
+        $r->add('GET', '/admin/auditoria', [LogsAdmin::class, 'auditoria'], true);
     }
 
     /** Chamada externa das tarefas (ex.: cron-job.org). Desligada se tarefas.chave estiver vazia. */

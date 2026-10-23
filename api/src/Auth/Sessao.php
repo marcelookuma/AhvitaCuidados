@@ -71,7 +71,7 @@ final class Sessao
         $s = Bd::um(
             'SELECT s.id AS sessao_id, s.ultimo_uso_em, u.*
                FROM sessoes s JOIN usuarios u ON u.id = s.usuario_id
-              WHERE s.token_hash = :h AND s.revogada_em IS NULL AND s.expira_em > :agora AND u.excluido_em IS NULL',
+              WHERE s.token_hash = :h AND s.revogada_em IS NULL AND s.expira_em > :agora AND u.excluido_em IS NULL AND u.bloqueado_em IS NULL',
             ['h' => hash('sha256', $token), 'agora' => Tempo::agoraSql()]
         );
         if ($s === null) return null;

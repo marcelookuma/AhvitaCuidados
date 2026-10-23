@@ -1,6 +1,6 @@
 /* Service worker: o app abre sem internet (o que for registrado fica na fila do aparelho).
    API nunca é guardada aqui: dados de saúde não ficam no cache do navegador. */
-const VERSAO = 'cuidados-v1';
+const VERSAO = 'cuidados-v2';
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(VERSAO).then((c) => c.addAll(['/', '/manifest.webmanifest', '/icone.svg'])).then(() => self.skipWaiting()));
 });
@@ -9,7 +9,8 @@ self.addEventListener('activate', (e) => {
 });
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
-  if (e.request.method !== 'GET' || url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
+  // O painel /admin nunca passa pelo cache (nem a página dele vira a do app).
+  if (e.request.method !== 'GET' || url.origin !== self.location.origin || url.pathname.startsWith('/api/') || url.pathname.startsWith('/admin')) return;
   // Páginas: rede primeiro; sem internet, a última versão guardada.
   if (e.request.mode === 'navigate') {
     e.respondWith(fetch(e.request).then((r) => { const c = r.clone(); caches.open(VERSAO).then((k) => k.put('/', c)); return r; }).catch(() => caches.match('/')));

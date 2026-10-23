@@ -69,6 +69,19 @@ return [
 
     'termos' => ['versao' => '2026-10'],
 
+    // Painel de administração (https://cuidados.ahvita.com/admin) — entra só com Google.
+    // 'donos': e-mails que sempre entram como dono(a) e não podem ser removidos pela tela.
+    // Depois do primeiro acesso, o(a) dono(a) dá acesso aos demais pelo próprio painel.
+    // Use contas Google com verificação em 2 etapas ligada.
+    'admin' => [
+        'donos' => [],            // ex.: ['voce@gmail.com']
+        'sessao_horas' => 8,      // a sessão do painel dura no máximo 8 h…
+        'inatividade_min' => 30,  // …e cai depois de 30 min sem uso
+    ],
+
+    // Log de acessos (todos os perfis + painel): dias de guarda. Mínimo 183 (Marco Civil, art. 15).
+    'logs' => ['dias' => 365],
+
     // Tarefas a cada 5 min (banco, alertas de cobertura, limpeza).
     // Sem cron na hospedagem, a própria API roda sozinha: deixe 'automaticas' => true.
     // 'chave' (opcional): libera POST /api/v1/sistema/tarefas para um serviço externo
