@@ -127,6 +127,18 @@ $perm = req('GET', "/pessoas/$p1/vinculos", $tG)['j']['empresa']['permissoes'] ?
 confere('gestor(a) não consegue dar à empresa registrar nem administrar', $perm === ['ver_registros', 'atendimentos'], $perm);
 confere('empresa não registra cuidado', req('POST', "/pessoas/$p1/registros", $tA, ['id' => ulid(), 'tipo' => 'agua', 'rotulo' => 'x', 'em' => gmdate('c')])['s'] === 403);
 
+echo "Gestor(a) libera e tira remédios e ficha: vale na hora para a empresa\n";
+confere('sem "Ver remédios", empresa não vê remédios', req('GET', "/pessoas/$p1/remedios", $tA)['s'] === 403);
+$pe = req('GET', "/pessoas/$p1", $tA)['j'];
+confere('sem ficha liberada, a ficha não vem', !array_key_exists('ficha', $pe) && !in_array('remedios_ver', $pe['permissoes'] ?? [], true), $pe);
+req('PATCH', "/pessoas/$p1", $tG, ['empresa_permissoes' => ['ver_registros', 'atendimentos', 'remedios_ver', 'ficha_emergencia']]);
+$pe = req('GET', "/pessoas/$p1", $tA)['j'];
+confere('empresa recebe as permissões novas em GET /pessoas/{id}', in_array('remedios_ver', $pe['permissoes'] ?? [], true) && in_array('ficha_emergencia', $pe['permissoes'] ?? [], true) && array_key_exists('ficha', $pe), $pe);
+confere('empresa passa a ver os remédios', req('GET', "/pessoas/$p1/remedios", $tA)['s'] === 200);
+confere('mas não muda remédios', req('POST', "/pessoas/$p1/remedios", $tA, ['nome' => 'X', 'horarios' => ['08:00']])['s'] === 403);
+req('PATCH', "/pessoas/$p1", $tG, ['empresa_permissoes' => ['ver_registros', 'atendimentos']]);
+confere('gestor(a) tira de novo: empresa deixa de ver', req('GET', "/pessoas/$p1/remedios", $tA)['s'] === 403 && !array_key_exists('ficha', req('GET', "/pessoas/$p1", $tA)['j']));
+
 echo "Empresa pede, gestor(a) aceita e escolhe o que liberar\n";
 $r = req('POST', "/empresas/$e2/pedidos-cliente", $tB, ['contato' => '11 9', 'permissoes' => []]);
 confere('contato inválido → 422', $r['s'] === 422, $r['j']);

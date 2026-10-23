@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { EscolherPermissoesEmpresa, LigarEmpresa } from './LigarEmpresa';
+import { EscolherPermissoesEmpresa, LigarEmpresa, nomes } from './LigarEmpresa';
 import { FUNCOES, MODALIDADES, PAPEIS, telefone, type ConviteCriado, type Pessoa, type Vinculo } from '@cuidados/core';
 import { api } from '../../servicos';
 import { useSessao } from '../../sessao';
@@ -124,11 +124,19 @@ function EditarVinculo({ v, aoSalvar, aoEncerrar }: { v: Vinculo; aoSalvar: () =
 }
 
 function PermissoesEmpresa({ pessoa, atuais, aoSalvar }: { pessoa: Pessoa; atuais: string[]; aoSalvar: () => void }) {
+  const lanche = useLanche();
   const [perm, setPerm] = useState(atuais);
+  const mudou = [...perm].sort().join() !== [...atuais].sort().join();
+  const salvar = useAcao(async () => {
+    await api.atualizarPessoa(pessoa.id, { empresa_permissoes: perm });
+    lanche(`Salvo. A empresa vê: ${nomes(perm)}.`);
+    aoSalvar();
+  });
   return (
     <>
       <EscolherPermissoesEmpresa valor={perm} aoMudar={setPerm} />
-      <button className="botao pequeno" style={{ alignSelf: 'flex-start' }} onClick={async () => { await api.atualizarPessoa(pessoa.id, { empresa_permissoes: perm }); aoSalvar(); }}>Salvar o que a empresa vê</button>
+      <ErroGeral erro={salvar.erro} />
+      <button className="botao pequeno" style={{ alignSelf: 'flex-start' }} disabled={!mudou || salvar.enviando} onClick={() => void salvar.executar()}>{mudou ? 'Salvar o que a empresa vê' : 'Salvo'}</button>
     </>
   );
 }
