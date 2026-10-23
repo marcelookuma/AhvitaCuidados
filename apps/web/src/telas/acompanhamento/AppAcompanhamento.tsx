@@ -97,6 +97,7 @@ function Moldura({ pessoas, atual, children, temOutros }: { pessoas: Pessoa[]; a
           </select>
         )}
         <span className="cresce" />
+        <button className="botao secundario pequeno" onClick={() => navegar('/conta')}>👤 Meus dados</button>
         {temOutros && <button className="botao secundario pequeno" onClick={() => navegar('/perfil')}>Trocar perfil</button>}
         <BotaoSair variante="pequeno" rotulo="Sair" />
       </header>

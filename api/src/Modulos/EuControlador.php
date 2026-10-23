@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Cuidados\Modulos;
 
+use Cuidados\Auth\Otp;
 use Cuidados\Auth\Sessao;
 use Cuidados\Http\Resposta;
 use Cuidados\Support\Auditoria;
@@ -191,6 +192,69 @@ final class EuControlador extends Controlador
     }
 
     /** POST /eu/excluir {confirmar:"EXCLUIR"} */
+    /**
+     * POST /eu/contato/codigo {destino} — trocar celular ou e-mail, passo 1.
+     * O código vai para o contato NOVO: assim ninguém troca para um número
+     * que não é seu, e um erro de digitação não tranca a conta.
+     */
+    public function pedirCodigoContato(): Resposta
+    {
+        $v = Valida::de($this->corpo());
+        $bruto = $v->texto('destino', true, 190);
+        $canal = $v->opcao('canal', ['whatsapp', 'sms', 'email'], false);
+        $v->validar();
+        ['destino' => $destino, 'tipo' => $tipo] = Otp::normalizarDestino((string)$bruto);
+        $this->conferirContatoNovo($tipo, $destino);
+        return Resposta::json(Otp::solicitar($destino, $canal, $this->req->ip) + ['campo' => $tipo]);
+    }
+
+    /** POST /eu/contato/confirmar {destino, codigo} — trocar celular ou e-mail, passo 2. */
+    public function confirmarContato(): Resposta
+    {
+        $v = Valida::de($this->corpo());
+        $bruto = $v->texto('destino', true, 190);
+        $codigo = $v->texto('codigo', true, 10);
+        $v->validar();
+        ['destino' => $destino, 'tipo' => $tipo] = Otp::normalizarDestino((string)$bruto);
+        $this->conferirContatoNovo($tipo, $destino);
+        Otp::verificar($destino, (string)$codigo);
+        $tinha = $this->u()[$tipo] !== null;
+        Bd::atualizar('usuarios', [$tipo => $destino, 'atualizado_em' => Tempo::agoraSql()], ['id' => $this->uid()]);
+        // Na auditoria vai só qual campo mudou, não o contato.
+        Auditoria::registrar('conta.contato_' . ($tinha ? 'trocado' : 'incluido'), 'usuario', $this->uid(), null, ['campo' => $tipo]);
+        return Resposta::json(Formata::eu(Bd::um('SELECT * FROM usuarios WHERE id = :id', ['id' => $this->uid()])));
+    }
+
+    /** POST /eu/contato/remover {campo: email|telefone|google} — só se sobrar outra forma de entrar. */
+    public function removerContato(): Resposta
+    {
+        $v = Valida::de($this->corpo());
+        $campo = $v->opcao('campo', ['email', 'telefone', 'google']);
+        $v->validar();
+        $u = $this->u();
+        $coluna = $campo === 'google' ? 'google_sub' : (string)$campo;
+        if ($u[$coluna] === null) throw ErroHttp::conflito('nada_a_remover', 'Não há nada para tirar aqui.');
+        $restantes = array_filter(['telefone' => $u['telefone'], 'email' => $u['email'], 'google_sub' => $u['google_sub']], fn($x, $k) => $x !== null && $k !== $coluna, ARRAY_FILTER_USE_BOTH);
+        if ($restantes === []) {
+            throw ErroHttp::conflito('ultimo_acesso', 'Esta é a única forma de entrar na sua conta. Cadastre outra antes de tirar esta.');
+        }
+        Bd::exec("UPDATE usuarios SET $coluna = NULL, atualizado_em = :a WHERE id = :u", ['a' => Tempo::agoraSql(), 'u' => $u['id']]);
+        Auditoria::registrar('conta.contato_removido', 'usuario', (string)$u['id'], null, ['campo' => $campo]);
+        return Resposta::json(Formata::eu(Bd::um('SELECT * FROM usuarios WHERE id = :id', ['id' => $u['id']])));
+    }
+
+    private function conferirContatoNovo(string $tipo, string $destino): void
+    {
+        if ($this->u()[$tipo] === $destino) {
+            throw ErroHttp::validacao(['destino' => 'Este já é o seu ' . ($tipo === 'email' ? 'e-mail' : 'celular')]);
+        }
+        if (Bd::valor("SELECT id FROM usuarios WHERE $tipo = :d AND id <> :u", ['d' => $destino, 'u' => $this->uid()]) !== null) {
+            throw ErroHttp::conflito($tipo . '_em_uso', $tipo === 'email'
+                ? 'Este e-mail já está em outra conta. Entre com ele para usar aquela conta.'
+                : 'Este celular já está em outra conta. Entre com ele para usar aquela conta.');
+        }
+    }
+
     public function excluir(): Resposta
     {
         if (($this->corpo()['confirmar'] ?? '') !== 'EXCLUIR') {

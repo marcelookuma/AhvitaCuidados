@@ -38,6 +38,9 @@ final class Rotas
         $r->add('GET', '/eu', [Eu::class, 'ver']);
         $r->add('PATCH', '/eu', [Eu::class, 'atualizar']);
         $r->add('POST', '/eu/termos', [Eu::class, 'aceitarTermos']);
+        $r->add('POST', '/eu/contato/codigo', [Eu::class, 'pedirCodigoContato']);
+        $r->add('POST', '/eu/contato/confirmar', [Eu::class, 'confirmarContato']);
+        $r->add('POST', '/eu/contato/remover', [Eu::class, 'removerContato']);
         $r->add('GET', '/eu/inicio', [Eu::class, 'inicio']);
         $r->add('GET', '/eu/exportar', [Eu::class, 'exportar']);
         $r->add('POST', '/eu/excluir', [Eu::class, 'excluir']);

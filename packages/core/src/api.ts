@@ -84,6 +84,10 @@ export function criarApi(op: OpcoesApi) {
     // Eu
     eu: () => get<Eu>('/eu'),
     atualizarEu: (d: Partial<Usuario> & { cpf?: string }) => patch<Usuario>('/eu', d),
+    // Trocar celular ou e-mail: o código vai para o contato novo
+    pedirCodigoContato: (destino: string) => post<{ canal: string; campo: 'telefone' | 'email'; expira_em: string; codigo_teste?: string }>('/eu/contato/codigo', { destino }),
+    confirmarContato: (destino: string, codigo: string) => post<Usuario>('/eu/contato/confirmar', { destino, codigo }),
+    removerContato: (campo: 'email' | 'telefone' | 'google') => post<Usuario>('/eu/contato/remover', { campo }),
     aceitarTermos: () => post<void>('/eu/termos'),
     inicio: () => get<{ conversas: ConversaResumo[]; propostas_abertas: number; pedidos_rede: number }>('/eu/inicio'),
     excluirConta: () => post<void>('/eu/excluir', { confirmar: 'EXCLUIR' }),

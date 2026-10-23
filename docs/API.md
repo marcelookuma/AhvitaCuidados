@@ -36,6 +36,9 @@ Base: `https://cuidados.ahvita.com/api/index.php?r=` (funciona em qualquer servi
 |---|---|---|---|
 | GET | `/eu` | — | conta, papéis (`cuidador`, `acompanha`, `empresa`), pessoas e empresas |
 | PATCH | `/eu` | `{nome?, apelido?, cpf?, preferencias?}` | CPF validado e único |
+| POST | `/eu/contato/codigo` | `{destino}` | trocar/incluir celular ou e-mail: o código vai para o contato **novo**; 422 se for o atual, 409 `telefone_em_uso`/`email_em_uso` |
+| POST | `/eu/contato/confirmar` | `{destino, codigo}` | grava o contato novo; a auditoria registra só o campo |
+| POST | `/eu/contato/remover` | `{campo: telefone\|email\|google}` | só se sobrar outra forma de entrar (409 `ultimo_acesso`) |
 | POST | `/eu/termos` | — | aceite versionado |
 | GET | `/eu/inicio` | — | lista de conversas do(a) cuidador(a) (estilo WhatsApp) |
 | GET | `/eu/exportar` | — | portabilidade (JSON) |

@@ -22,10 +22,11 @@ export function Eu() {
     <div className="tela modo-cuidador">
       <Topo titulo="Eu" direita={<Ouvir texto="Eu. Aqui você muda o tamanho da letra e liga a leitura em voz alta." />} />
       <div className="rolagem conteudo">
-        <div className="cartao linha-h">
+        <button className="cartao linha-h cartao-botao" onClick={() => navegar('/conta')} aria-label="Meus dados: mudar nome, CPF, celular ou e-mail">
           <span className="avatar" style={{ background: 'var(--verde)', color: '#fff' }}>{(eu.usuario.apelido || eu.usuario.nome || '?')[0]}</span>
           <span className="cresce"><b>{eu.usuario.nome}</b><br /><span className="sutil">{telefone(eu.usuario.telefone) || eu.usuario.email}</span></span>
-        </div>
+          <span className="botao secundario pequeno" aria-hidden>✏️ Mudar</span>
+        </button>
         <div className="cartao pilha">
           <div className="linha-h"><span className="cresce"><b>Tamanho da letra</b><br /><span className="sutil">Do jeito que você lê melhor</span></span>
             <div className="chips">{[1, 2, 3].map((n) => (
