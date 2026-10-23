@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { cpf as fmtCpf, telefone as fmtTel, type Usuario } from '@cuidados/core';
 import { api } from '../../servicos';
 import { navegar, PERFIL_ATIVO } from '../../rota';
@@ -27,7 +27,12 @@ export function MeusDados() {
   });
   const voltar = () => navegar(localStorage.getItem(PERFIL_ATIVO) ?? '/', true);
   const c = salvar.erro?.campos ?? {};
-  const formasDeEntrar = [u.telefone, u.email, u.google ? 'google' : null].filter(Boolean).length;
+  // Celular confirmado pode entrar; celular só informado não conta como forma de entrar.
+  const formasDeEntrar = [u.telefone && u.telefone_confirmado !== false ? 't' : null, u.email, u.google ? 'google' : null].filter(Boolean).length;
+  const [temCelular, setTemCelular] = useState<boolean | null>(null);
+  useEffect(() => {
+    api.canais().then((c) => setTemCelular(c.canais.some((x) => ['whatsapp', 'sms', 'log'].includes(x)))).catch(() => setTemCelular(false));
+  }, []);
 
   const corpo = (
     <div className="pilha meus-dados">
@@ -50,8 +55,8 @@ export function MeusDados() {
 
       <div className="cartao pilha">
         <h2 className="titulo-cartao">Como você entra no app</h2>
-        <p className="sutil" style={{ margin: 0 }}>Para trocar, mandamos um código para o número ou e-mail novo.</p>
-        <Contato campo="telefone" u={u} grande={grande} podeTirar={formasDeEntrar > 1} />
+        <p className="sutil" style={{ margin: 0 }}>Para trocar, mandamos um código para o {temCelular === false ? 'e-mail' : 'número ou e-mail'} novo.</p>
+        <Contato campo="telefone" u={u} grande={grande} podeTirar={formasDeEntrar > 1 || u.telefone_confirmado === false} semCodigo={temCelular === false} />
         <div className="separador" />
         <Contato campo="email" u={u} grande={grande} podeTirar={formasDeEntrar > 1} />
         <div className="separador" />
@@ -85,7 +90,7 @@ export function MeusDados() {
 }
 
 /** Celular ou e-mail: mostra o atual; trocar pede o novo, manda o código e confirma. */
-function Contato({ campo, u, grande, podeTirar }: { campo: 'telefone' | 'email'; u: Usuario; grande: boolean; podeTirar: boolean }) {
+function Contato({ campo, u, grande, podeTirar, semCodigo = false }: { campo: 'telefone' | 'email'; u: Usuario; grande: boolean; podeTirar: boolean; semCodigo?: boolean }) {
   const { recarregar } = useSessao();
   const lanche = useLanche();
   const atual = u[campo];
@@ -96,12 +101,23 @@ function Contato({ campo, u, grande, podeTirar }: { campo: 'telefone' | 'email';
   const [aviso, setAviso] = useState<{ canal: string; teste?: string } | null>(null);
   const [tirando, setTirando] = useState(false);
 
-  const pedir = useAcao(async () => {
-    const r = await api.pedirCodigoContato(novo);
-    setAviso({ canal: r.canal, teste: r.codigo_teste });
+  const pedir = useAcao(async (destino: string = novo) => {
+    const r = await api.pedirCodigoContato(destino);
+    if (r.sem_codigo) {
+      // Sem SMS/WhatsApp no servidor: o celular fica salvo como contato, sem código.
+      await api.confirmarContato(destino);
+      await recarregar();
+      lanche('Celular salvo.');
+      setEtapa('ver');
+      setNovo('');
+      return;
+    }
+    setNovo(destino);
+    setAviso({ canal: r.canal ?? '', teste: r.codigo_teste });
     setCodigo('');
     setEtapa('codigo');
   });
+  const naoConfirmado = campo === 'telefone' && !!atual && u.telefone_confirmado === false;
   const confirmar = useAcao(async () => {
     await api.confirmarContato(novo, codigo);
     await recarregar();
@@ -121,9 +137,11 @@ function Contato({ campo, u, grande, podeTirar }: { campo: 'telefone' | 'email';
     <div className="pilha contato">
       <div className="linha-h" style={{ flexWrap: 'wrap' }}>
         <span aria-hidden>{campo === 'telefone' ? '📱' : '✉️'}</span>
-        <span className="cresce"><b>{nomeCampo}</b><br /><span className={atual ? '' : 'sutil'}>{atual ? (campo === 'telefone' ? fmtTel(atual) : atual) : 'Não cadastrado'}</span></span>
+        <span className="cresce"><b>{nomeCampo}</b><br /><span className={atual ? '' : 'sutil'}>{atual ? (campo === 'telefone' ? fmtTel(atual) : atual) : 'Não cadastrado'}</span>
+          {naoConfirmado && <><br /><span className="etiqueta atencao">Não confirmado</span> <span className="sutil">{semCodigo ? 'Fica como contato. Para entrar, use o e-mail ou o Google.' : 'Confirme para poder entrar com ele.'}</span></>}</span>
         {etapa === 'ver' && !tirando && (
           <>
+            {naoConfirmado && !semCodigo && <button className="botao pequeno" disabled={pedir.enviando} onClick={() => void pedir.executar(atual!)}>Confirmar</button>}
             <button className="botao secundario pequeno" onClick={() => { setNovo(''); setEtapa('novo'); }}>{atual ? 'Trocar' : 'Cadastrar'}</button>
             {atual && podeTirar && <button className="botao fantasma pequeno" onClick={() => setTirando(true)}>Tirar</button>}
           </>
@@ -142,15 +160,16 @@ function Contato({ campo, u, grande, podeTirar }: { campo: 'telefone' | 'email';
       )}
 
       {etapa === 'novo' && (
-        <form className="pilha" onSubmit={(e) => { e.preventDefault(); void pedir.executar(); }}>
+        <form className="pilha" onSubmit={(e) => { e.preventDefault(); void pedir.executar(novo); }}>
           <Campo rotulo={campo === 'telefone' ? 'Celular novo, com DDD' : 'E-mail novo'} erro={pedir.erro?.campos?.destino}>
             <input value={novo} onChange={(e) => setNovo(e.target.value)} autoFocus required
               inputMode={campo === 'telefone' ? 'tel' : 'email'} type={campo === 'telefone' ? 'tel' : 'email'}
               autoComplete={campo === 'telefone' ? 'tel' : 'email'} placeholder={campo === 'telefone' ? '(11) 90000-0000' : 'nome@exemplo.com'} />
           </Campo>
+          {campo === 'telefone' && semCodigo && <p className="sutil" style={{ margin: 0 }}>No momento não mandamos código por celular. O número fica salvo como contato; para entrar, continue usando o e-mail ou o Google.</p>}
           {!pedir.erro?.campos?.destino && <ErroGeral erro={pedir.erro} />}
           <div className={grande ? 'pilha' : 'linha-h'}>
-            <button className={`botao ${grande ? 'largo' : 'pequeno'}`} disabled={pedir.enviando || novo.trim().length < 5}>Mandar código</button>
+            <button className={`botao ${grande ? 'largo' : 'pequeno'}`} disabled={pedir.enviando || novo.trim().length < 5}>{campo === 'telefone' && semCodigo ? 'Salvar celular' : 'Mandar código'}</button>
             <button type="button" className={`botao fantasma ${grande ? 'largo' : 'pequeno'}`} onClick={() => setEtapa('ver')}>Cancelar</button>
           </div>
         </form>

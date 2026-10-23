@@ -42,7 +42,8 @@ final class Otp
             if (in_array('log', $canais, true)) {
                 $canal = 'log';
             } else {
-                throw ErroHttp::validacao(['canal' => 'Esse jeito de receber o código não está disponível'], 'Escolha outra forma de receber o código.');
+                throw ErroHttp::validacao(['destino' => 'No momento não mandamos código por celular'],
+                    $tipo === 'telefone' ? 'No momento não mandamos código por celular. Use o seu e-mail.' : 'Escolha outra forma de receber o código.');
             }
         }
 

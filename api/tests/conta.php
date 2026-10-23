@@ -36,7 +36,13 @@ function confere(string $nome, bool $cond, mixed $info = null): void
 
 $pdo = new PDO('mysql:host=127.0.0.1;dbname=cuidados;charset=utf8mb4', 'cuidados', 'cuidados');
 /** O app só deixa pedir 1 código a cada 30 s por destino: o teste apaga o anterior. */
-function limpar(string $destino): void { global $pdo; $pdo->prepare('DELETE FROM otp_codigos WHERE destino = ?')->execute([$destino]); }
+function limpar(string $destino): void
+{
+    global $pdo;
+    $pdo->prepare('DELETE FROM otp_codigos WHERE destino = ?')->execute([$destino]);
+    // As suítes rodam todas do mesmo IP: zera a contagem por IP (limite de 20 códigos/h) só para o teste.
+    $pdo->exec('UPDATE otp_codigos SET ip = NULL');
+}
 function entrar(string $tel): array
 {
     limpar('+55' . $tel);
@@ -90,6 +96,50 @@ $r = req('POST', '/eu/contato/remover', $t, ['campo' => 'telefone']);
 confere('tira o celular (sobra o e-mail)', $r['s'] === 200 && $r['j']['telefone'] === null && $r['j']['email'] !== null, $r['j']);
 $r = req('POST', '/eu/contato/remover', $t, ['campo' => 'email']);
 confere('não tira a última forma de entrar', $r['s'] === 409 && $r['j']['erro']['codigo'] === 'ultimo_acesso', $r['j']);
+
+
+echo "Servidor sem SMS/WhatsApp (celular fica como contato)\n";
+// Segundo servidor, no mesmo banco, com CODIGO_CANAIS=email (sem envio por celular), como em produção hoje.
+$semCel = getenv('SEM_CELULAR_URL') ?: '';
+if ($semCel === '') {
+    echo "  (pulado: defina SEM_CELULAR_URL com um servidor rodando com CODIGO_CANAIS=email)\n";
+} else {
+    $baseNormal = $base;
+    $baseSemCel = $semCel . (($argv[2] ?? '') === 'r' ? '/api/index.php?r=' : '/api/v1');
+    /** Roda $fn contra o servidor sem envio por celular (as sessões valem nos dois: mesmo banco). */
+    $semCelular = function (callable $fn) use (&$base, $baseSemCel, $baseNormal) { $base = $baseSemCel; try { return $fn(); } finally { $base = $baseNormal; } };
+
+    [$tS] = entrar('11955550021');
+    $semCelular(function () use ($tS) {
+        $r = req('POST', '/auth/codigo', null, ['destino' => '11955550022']);
+        confere('entrar por celular: mensagem clara, sem "escolha outra forma"', $r['s'] === 422 && str_contains($r['j']['erro']['mensagem'] ?? '', 'Use o seu e-mail'), $r['j']);
+        $r = req('POST', '/eu/contato/codigo', $tS, ['destino' => '(11) 95555-0023']);
+        confere('trocar celular: não pede código', $r['s'] === 200 && $r['j']['sem_codigo'] === true, $r['j']);
+        $r = req('POST', '/eu/contato/confirmar', $tS, ['destino' => '11955550023']);
+        confere('salva o celular como não confirmado', $r['s'] === 200 && $r['j']['telefone'] === '+5511955550023' && $r['j']['telefone_confirmado'] === false, $r['j']);
+    });
+
+    echo "Quando o envio por celular existir\n";
+    limpar('+5511955550023');
+    $r = req('POST', '/eu/contato/codigo', $tS, ['destino' => '11955550023']);
+    confere('o próprio celular não confirmado pode ser confirmado', $r['s'] === 200 && $r['j']['sem_codigo'] === false, $r['j']);
+    $r = req('POST', '/eu/contato/confirmar', $tS, ['destino' => '11955550023', 'codigo' => '123456']);
+    confere('confirma com o código', $r['s'] === 200 && $r['j']['telefone_confirmado'] === true, $r['j']);
+
+    // Número digitado errado (de um estranho) e nunca confirmado não pode abrir a conta de quem digitou.
+    $semCelular(function () use ($t) {
+        req('POST', '/eu/contato/codigo', $t, ['destino' => '11955550030']);
+        $r = req('POST', '/eu/contato/confirmar', $t, ['destino' => '11955550030']);
+        confere('conta com e-mail informa um celular sem código', ($r['j']['telefone_confirmado'] ?? null) === false, $r['j']);
+    });
+    $r = req('POST', '/eu/contato/remover', $t, ['campo' => 'email']);
+    confere('celular não confirmado não conta como forma de entrar', $r['s'] === 409 && $r['j']['erro']['codigo'] === 'ultimo_acesso', $r['j']);
+    [, $idEstranho] = entrar('11955550030');
+    confere('dono do número entra em conta própria, não na de quem digitou', $idEstranho !== '' && $idEstranho !== $id);
+    confere('o número sai da conta que só o informou', req('GET', '/eu', $t)['j']['usuario']['telefone'] === null);
+    $lib = (int)$pdo->query("SELECT COUNT(*) FROM auditoria WHERE acao = 'conta.telefone_liberado' AND entidade_id = " . $pdo->quote($id))->fetchColumn();
+    confere('liberação do número na auditoria', $lib === 1, $lib);
+}
 
 echo "Auditoria\n";
 $dados = (string)$pdo->query("SELECT GROUP_CONCAT(COALESCE(dados,'')) FROM auditoria WHERE usuario_id = " . $pdo->quote($id) . " AND acao LIKE 'conta.contato%'")->fetchColumn();

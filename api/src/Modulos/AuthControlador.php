@@ -48,6 +48,13 @@ final class AuthControlador extends Controlador
 
         [$usuario, $novo] = Bd::transacao(function () use ($campo, $destino) {
             $u = Bd::um("SELECT * FROM usuarios WHERE $campo = :d", ['d' => $destino]);
+            if ($u !== null && $campo === 'telefone' && (int)$u['telefone_confirmado'] === 0) {
+                // Celular só informado (sem código) nunca abre a conta: quem prova ser dono do número
+                // ganha conta própria, e o número sai da conta que o informou.
+                Bd::exec('UPDATE usuarios SET telefone = NULL, telefone_confirmado = 1, atualizado_em = :a WHERE id = :id', ['a' => Tempo::agoraSql(), 'id' => $u['id']]);
+                Auditoria::registrar('conta.telefone_liberado', 'usuario', (string)$u['id']);
+                $u = null;
+            }
             if ($u !== null && $u['excluido_em'] !== null) {
                 throw ErroHttp::proibido('Esta conta foi excluída.');
             }

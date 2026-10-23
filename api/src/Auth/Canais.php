@@ -34,6 +34,12 @@ final class Canais
         return $ok;
     }
 
+    /** Dá para mandar código por celular (SMS, WhatsApp ou, em teste, o log)? */
+    public static function celular(): bool
+    {
+        return array_intersect(['sms', 'whatsapp', 'log'], self::disponiveis()) !== [];
+    }
+
     public static function verificacaoExterna(string $canal): bool
     {
         return in_array($canal, ['sms', 'whatsapp'], true);

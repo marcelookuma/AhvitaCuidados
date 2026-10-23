@@ -161,6 +161,8 @@ final class CadastrosAdmin extends AdminBase
                 throw ErroHttp::conflito($campo . '_em_uso', 'Este ' . ($campo === 'email' ? 'e-mail' : 'celular') . ' já está em outra conta.');
             }
         }
+        // Celular corrigido pelo suporte não passou por código: não serve para entrar até ser confirmado.
+        if (array_key_exists('telefone', $mud) && $mud['telefone'] !== $u['telefone']) $mud['telefone_confirmado'] = 0;
         Bd::atualizar('usuarios', $mud + ['atualizado_em' => Tempo::agoraSql()], ['id' => $u['id']]);
         // Na auditoria só os nomes dos campos (não o dado novo): o dado está no cadastro.
         $this->auditar('usuario_corrigido', 'usuario', (string)$u['id'], null, ['campos' => array_keys($mud), 'motivo' => $motivo]);
