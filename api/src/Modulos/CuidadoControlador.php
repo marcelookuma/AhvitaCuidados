@@ -48,7 +48,11 @@ final class CuidadoControlador extends Controlador
         elseif ($antes !== null) { $cond = 'AND recebido_em < :d'; $p['d'] = Tempo::isoParaSql($antes); }
         if ($verMsg) {
             $msgs = Bd::todos("SELECT * FROM mensagens WHERE conversa_id = :c $cond ORDER BY recebido_em DESC, id DESC LIMIT $limite", ['c' => $cid] + $p);
-            foreach ($msgs as $m) $itens[] = Formata::mensagem($m);
+            foreach ($msgs as $m) {
+                // ⚖️ Empresa não vê início/fim de serviço (seria controle de horário de cuidador(a) MEI/autônomo(a)).
+                if ($ctx['papel'] === 'empresa' && $m['autor_id'] === null && self::ehAvisoDePresenca((string)$m['texto'])) continue;
+                $itens[] = Formata::mensagem($m);
+            }
         }
         if ($verReg) {
             $regs = Bd::todos("SELECT * FROM registros WHERE pessoa_id = :pp $cond ORDER BY recebido_em DESC, id DESC LIMIT $limite", ['pp' => $pid] + $p);
@@ -70,7 +74,7 @@ final class CuidadoControlador extends Controlador
             'cuidador' => Formata::pessoaPublica($pr['cuidador_id']),
             'desde' => Tempo::sqlParaIso($pr['inicio_em']),
             'minha' => $pr['cuidador_id'] === $uid,
-        ], Bd::todos('SELECT * FROM presencas WHERE pessoa_id = :p AND fim_em IS NULL', ['p' => $pid]));
+        ], $ctx['papel'] === 'empresa' ? [] : Bd::todos('SELECT * FROM presencas WHERE pessoa_id = :p AND fim_em IS NULL', ['p' => $pid]));
 
         return Resposta::json([
             'itens' => $itens,
@@ -219,7 +223,8 @@ final class CuidadoControlador extends Controlador
         $sql .= ' ORDER BY ocorrido_em DESC, id DESC LIMIT 100';
         $regs = array_map([Formata::class, 'registro'], Bd::todos($sql, $par));
         $presencas = [];
-        if ($this->req->q('presencas') === '1') {
+        // ⚖️ A empresa nunca vê presença (início e fim do serviço de cada cuidador(a)).
+        if ($this->req->q('presencas') === '1' && $ctx['papel'] !== 'empresa') {
             // Registro de presença: só início e fim. Sem totais de horas, atrasos ou ranking.
             $presencas = array_map(fn($p) => [
                 'id' => $p['id'], 'cuidador' => Formata::pessoaPublica($p['cuidador_id']),
@@ -343,6 +348,12 @@ final class CuidadoControlador extends Controlador
     }
 
     // ---------------------------------------------------------------- apoio
+
+    /** Mensagens automáticas de início/fim de serviço ("▶️ Serviço iniciado às…", "✅ Serviço finalizado às…"). */
+    public static function ehAvisoDePresenca(string $texto): bool
+    {
+        return str_starts_with($texto, '▶️ Serviço iniciado') || str_starts_with($texto, '✅ Serviço finalizado');
+    }
 
     /** @return array<string,mixed> */
     private function mensagemDoCorpo(string $conversaId, ?string $pessoaId): array

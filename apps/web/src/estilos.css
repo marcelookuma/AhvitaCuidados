@@ -422,3 +422,4 @@ html[data-fonte="3"] .modo-painel { --base: 20px; }
 .contato .confirma { padding: .7em .8em; background: var(--alerta-claro); border-radius: var(--raio-p); }
 .codigo-unico { font-size: 1.8em; text-align: center; letter-spacing: .3em; font-weight: 800; padding: .35em; border-radius: 12px; border: 2px solid var(--linha); max-width: 9em; }
 .conta-principal { max-width: 46em; }
+.aviso-empresa { margin: 0; padding: .6em .9em; border-radius: var(--raio-p); background: var(--ambar-claro); color: var(--tinta); font-size: .92em; }

@@ -35,3 +35,6 @@ export const ARRANJOS: { chave: string; nome: string; desc: string }[] = [
   { chave: 'gestor_rede', nome: 'Eu + Rede de Apoio', desc: 'Revezamos com parentes, amigos, vizinhos' },
   { chave: 'gestor_rede_cuidador', nome: 'Eu + Rede + cuidador(a)', desc: 'Todos participam' },
 ];
+
+/** O que a empresa pode ver ou fazer (mesma lista de ClientesControlador::PERMISSOES). Quem decide é o(a) gestor(a). */
+export const PERMISSOES_EMPRESA = ['atendimentos', 'ver_registros', 'plano_ver', 'remedios_ver', 'fotos', 'mensagens', 'ficha_emergencia'];

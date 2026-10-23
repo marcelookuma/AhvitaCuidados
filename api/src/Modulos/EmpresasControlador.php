@@ -128,7 +128,7 @@ final class EmpresasControlador extends Controlador
             ));
             $saida[] = $f;
         }
-        return Resposta::json(['clientes' => $saida]);
+        return Resposta::json(['clientes' => $saida, 'pedidos' => ClientesControlador::daEmpresa((string)$e['id'])]);
     }
 
     /**

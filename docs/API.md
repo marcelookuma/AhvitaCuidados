@@ -114,6 +114,20 @@ Base: `https://cuidados.ahvita.com/api/index.php?r=` (funciona em qualquer servi
 | GET/POST | `/conversas/{id}/mensagens` | `{id, tipo, texto?, midia_id?, em}` | conversa direta |
 | POST | `/conversas/{id}/visto` | — | |
 
+## Empresa ↔ pessoa cuidada (pedidos nos dois sentidos)
+Quem decide o que a empresa vê é sempre o(a) gestor(a). Só o aceite liga a pessoa à empresa (`empresa_id`, `empresa_permissoes`), grava o consentimento `compartilhar_empresa` e avisa todos na conversa. Uma empresa por pessoa. Pedido vence em 30 dias; pedido dos dois lados = aceite. O que a empresa pode ter: `atendimentos, ver_registros, plano_ver, remedios_ver, fotos, mensagens, ficha_emergencia` (nunca registrar, editar ou administrar). ⚖️ A empresa **nunca vê presença**: `presencas=1` volta vazio, `em_servico` vazio no painel e no feed, e as mensagens "Serviço iniciado/finalizado às…" não aparecem para ela.
+
+| Método | Caminho | Corpo | Observação |
+|---|---|---|---|
+| GET | `/pessoas/{id}/empresas/buscar?q=` | — | `administrar`; nome ou CNPJ |
+| POST | `/pessoas/{id}/pedidos-empresa` | `{empresa_id, permissoes, mensagem?}` | `administrar`; 409 `outra_empresa`/`ja_cliente`/`pedido_pendente` |
+| GET | `/eu/pedidos-empresa` | — | pedidos que empresas fizeram a mim e os que fiz |
+| POST | `/empresas/{id}/pedidos-cliente` | `{contato: celular\|e-mail do(a) gestor(a), permissoes, mensagem?}` | só acha gestor(a) ativo(a) (celular confirmado); 404 sugere convite; 20 não encontrados/h → 429 |
+| GET | `/empresas/{id}/clientes` | — | agora traz `pedidos.recebidos` e `pedidos.enviados` |
+| POST | `/pedidos-cliente/{id}/aceitar` | `{pessoa_id?, permissoes?}` | gestor(a) aceitando pedido da empresa: escolhe a pessoa e o que liberar (pode ser menos do que o pedido) |
+| POST | `/pedidos-cliente/{id}/recusar` · `/cancelar` | — | quem recebeu recusa; quem pediu desfaz |
+| POST | `/pessoas/{id}/empresa/desvincular` | — | encerra, revoga o consentimento e avisa na conversa |
+
 ## Rede da empresa (pedidos nos dois sentidos)
 Só o aceite do outro lado coloca o(a) cuidador(a) na rede (`empresa_cuidadores`). Um pedido pendente por empresa + cuidador(a); vence em 30 dias. Se o outro lado já tinha pedido, o segundo pedido vale como aceite. Entrar na rede não é exclusividade.
 

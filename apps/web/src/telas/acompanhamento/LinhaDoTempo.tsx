@@ -31,7 +31,8 @@ export function LinhaDoTempo({ pessoa }: { pessoa: Pessoa }) {
     <>
       <h1>Linha do tempo</h1>
       <div className="chips" role="group" aria-label="Filtrar">
-        {FILTROS.map((f) => <button key={f.k} className="chip" aria-pressed={filtro === f.k} onClick={() => setFiltro(f.k)}>{f.t}</button>)}
+        {/* ⚖️ Empresa não vê presença (horário de entrada e saída de cuidadores(as)): sem esse filtro. */}
+        {FILTROS.filter((f) => f.k !== 'presencas' || pessoa.meu_papel !== 'empresa').map((f) => <button key={f.k} className="chip" aria-pressed={filtro === f.k} onClick={() => setFiltro(f.k)}>{f.t}</button>)}
       </div>
       <ErroGeral erro={r.erro} />
       {r.carregando && <Carregando />}

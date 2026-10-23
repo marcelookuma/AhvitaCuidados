@@ -153,9 +153,18 @@ final class ConvitesControlador extends Controlador
                     $ctx = Acesso::pessoa($this->u(), $pid);
                     Acesso::exigir($ctx, 'administrar');
                     $perm = array_key_exists('permissoes', $this->corpo())
-                        ? Permissoes::limpar($this->corpo()['permissoes'], 'empresa')
+                        ? ClientesControlador::limpar($this->corpo()['permissoes'])
                         : Permissoes::padrao('empresa');
+                    $atual = $ctx['pessoa']['empresa_id'];
+                    if ($atual !== null && $atual !== $c['empresa_id']) {
+                        throw ErroHttp::conflito('outra_empresa', 'Esta pessoa já é acompanhada por outra empresa. Encerre aquela relação em "Quem cuida" antes.');
+                    }
                     Bd::atualizar('pessoas_cuidadas', ['empresa_id' => $c['empresa_id'], 'empresa_permissoes' => $perm, 'atualizado_em' => $agora], ['id' => $pid]);
+                    // Mesmas regras do pedido de vínculo: consentimento do(a) gestor(a) e aviso na conversa.
+                    Bd::inserir('consentimentos', ['id' => Ulid::novo(), 'usuario_id' => $uid, 'pessoa_id' => $pid, 'tipo' => 'compartilhar_empresa',
+                        'versao' => (string)Config::get('termos.versao'), 'ip' => $this->req->ip, 'aceito_em' => $agora]);
+                    $emp = Bd::um('SELECT nome_fantasia, razao_social FROM empresas WHERE id = :id', ['id' => $c['empresa_id']]);
+                    Conversas::sistema(Conversas::daPessoa($pid), '🏢 A empresa ' . ($emp['nome_fantasia'] ?: $emp['razao_social']) . ' passou a acompanhar o cuidado.');
                     $saida = ['empresa_id' => $c['empresa_id'], 'pessoa_id' => $pid];
                     break;
                 default:

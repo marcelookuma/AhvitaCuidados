@@ -32,6 +32,9 @@ const ACAO: Record<string, string> = {
   'PUT /agenda/disponibilidade': 'Mudou a própria agenda',
   'POST /empresas/{id}/pedidos-rede': 'Empresa chamou cuidador(a) para a rede', 'POST /eu/pedidos-rede': 'Pediu para entrar na rede de empresa',
   'POST /pedidos-rede/{id}/aceitar': 'Aceitou pedido de rede', 'POST /pedidos-rede/{id}/recusar': 'Recusou pedido de rede',
+  'POST /pessoas/{id}/pedidos-empresa': 'Gestor(a) pediu vínculo com empresa', 'POST /empresas/{id}/pedidos-cliente': 'Empresa pediu para acompanhar cliente',
+  'POST /pedidos-cliente/{id}/aceitar': 'Aceitou vínculo empresa ↔ pessoa', 'POST /pedidos-cliente/{id}/recusar': 'Recusou vínculo empresa ↔ pessoa',
+  'POST /pedidos-cliente/{id}/cancelar': 'Desfez pedido de vínculo', 'POST /pessoas/{id}/empresa/desvincular': 'Encerrou relação com a empresa',
   'POST /pedidos-rede/{id}/cancelar': 'Desfez pedido de rede', 'POST /eu/empresas/{id}/sair': 'Saiu da rede de empresa', 'POST /midias': 'Enviou foto ou áudio', 'POST /registros/{id}/anular': 'Corrigiu registro',
 };
 export function descrever(l: Pick<Linha, 'metodo' | 'rota' | 'evento'>) {
