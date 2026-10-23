@@ -179,11 +179,46 @@ jobs:
           mkdir -p /tmp/diag && cd /tmp/diag && npm init -y >/dev/null && npm install --no-audit --no-fund basic-ftp@5.2.2 >/dev/null
           NODE_PATH=/tmp/diag/node_modules node "$GITHUB_WORKSPACE/scripts/conferir-pastas-ftp.cjs"
           sleep 60   # a KingHost recusa uma nova conexão logo em seguida
-      # Um envio só, a partir da raiz da conta (a KingHost recusa uma 2ª conexão logo em seguida).
       # O pacote espelha a raiz: <www>/… e <pasta privada>/…
+      # Um envio só, a partir da raiz da conta. Se a conexão falhar (a KingHost às vezes
+      # recusa logo após outra conexão), espera 90 s e tenta de novo uma vez.
       - name: Enviar app + API (uma conexão, a partir da raiz da conta)
+        id: envio1
         if: vars.ENVIO_FTP == 'sim'
+        continue-on-error: true
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        # O GitHub passou a rodar esta ação no Node 24, que tenta IPv6 e IPv4 ao mesmo
+        # tempo com prazo de 250 ms e desiste das duas ("AggregateError (control socket)").
+        # Aqui: tenta só o endereço IPv4, sem a corrida (o FTP da KingHost demora a responder).
+        env:
+          NODE_OPTIONS: --no-network-family-autoselection --dns-result-order=ipv4first
+        with:
+          server: ${{ secrets.FTP_SERVIDOR }}
+          username: ${{ secrets.FTP_USUARIO }}
+          password: ${{ secrets.FTP_SENHA }}
+          protocol: ${{ vars.FTP_PROTOCOLO || 'ftps' }}
+          local-dir: ./envio/
+          server-dir: ${{ steps.pastas.outputs.raiz }}
+          log-level: standard
+          exclude: |
+            **/.git*
+            **/.git*/**
+            COMO-ENVIAR.txt
+            ${{ steps.pastas.outputs.privado }}midias/**
+            ${{ steps.pastas.outputs.privado }}config/configuracao.php
+      - name: Esperar antes de tentar de novo
+        if: vars.ENVIO_FTP == 'sim' && steps.envio1.outcome == 'failure'
+        run: |
+          echo "::warning title=Envio por FTP::A 1ª tentativa falhou; nova tentativa em 90 s."
+          sleep 90
+      - name: Enviar app + API (2ª tentativa)
+        if: vars.ENVIO_FTP == 'sim' && steps.envio1.outcome == 'failure'
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        # O GitHub passou a rodar esta ação no Node 24, que tenta IPv6 e IPv4 ao mesmo
+        # tempo com prazo de 250 ms e desiste das duas ("AggregateError (control socket)").
+        # Aqui: tenta só o endereço IPv4, sem a corrida (o FTP da KingHost demora a responder).
+        env:
+          NODE_OPTIONS: --no-network-family-autoselection --dns-result-order=ipv4first
         with:
           server: ${{ secrets.FTP_SERVIDOR }}
           username: ${{ secrets.FTP_USUARIO }}
