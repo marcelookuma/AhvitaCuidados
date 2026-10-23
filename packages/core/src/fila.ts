@@ -84,6 +84,8 @@ export function criarFila(api: Api, arm: Armazenamento) {
     processar,
     pendentes: () => cache,
     async carregar() { await avisar(); },
+    /** Ao sair da conta: o armazenamento já foi apagado; zera a memória e avisa as telas. */
+    async limpar() { cache = []; await avisar(); },
     ouvir(f: Ouvinte) { ouvintes.add(f); f(cache); return () => { ouvintes.delete(f); }; },
   };
 }

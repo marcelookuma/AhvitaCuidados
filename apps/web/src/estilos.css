@@ -395,3 +395,10 @@ html[data-fonte="3"] .modo-painel { --base: 20px; }
   .tabela.responsiva td:first-child { padding-top: .7em; }
   .tabela.responsiva td:last-child { padding-bottom: .7em; }
 }
+
+/* ---------- Sair da conta (igual em todos os perfis) ---------- */
+.botao-sair svg { width: 1.25em; height: 1.25em; flex-shrink: 0; }
+.botao.secundario.botao-sair { color: var(--alerta); border-color: #E9B7B1; }
+.aviso-sair { display: flex; flex-direction: column; gap: .25em; background: #FFF6F5; border: 1.5px solid #E9B7B1; border-radius: var(--raio-p); padding: .7em .9em; margin-bottom: .8em; color: var(--alerta); }
+.aviso-sair span { color: var(--tinta); }
+.acesso-rodape { margin-top: auto; padding-top: .8em; }

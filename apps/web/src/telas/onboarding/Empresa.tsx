@@ -3,6 +3,7 @@ import { api } from '../../servicos';
 import { navegar, PERFIL_ATIVO } from '../../rota';
 import { useSessao } from '../../sessao';
 import { Campo, ErroGeral, useAcao } from '../../componentes/ui';
+import { BotaoSair } from '../../componentes/sair';
 
 /** Onboarding da empresa: dados da empresa; quem cadastra vira administração. */
 export function OnboardingEmpresa() {
@@ -32,6 +33,7 @@ export function OnboardingEmpresa() {
         <button className="botao largo" disabled={criar.enviando}>Cadastrar</button>
         <button type="button" className="botao fantasma" onClick={() => navegar('/bem-vindo', true)}>Voltar</button>
       </form>
+      <div className="acesso-rodape"><BotaoSair /></div>
     </main>
   );
 }

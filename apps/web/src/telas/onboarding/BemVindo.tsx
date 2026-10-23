@@ -3,6 +3,7 @@ import { cpf as fmtCpf } from '@cuidados/core';
 import { api } from '../../servicos';
 import { navegar } from '../../rota';
 import { useSessao } from '../../sessao';
+import { BotaoSair } from '../../componentes/sair';
 import { Campo, ErroGeral, Ouvir, useAcao } from '../../componentes/ui';
 
 /**
@@ -11,7 +12,7 @@ import { Campo, ErroGeral, Ouvir, useAcao } from '../../componentes/ui';
  * onboarding (Gestor, Cuidador(a), Empresa), separado do app principal.
  */
 export function BemVindo({ convitePendente }: { convitePendente: string | null }) {
-  const { eu, recarregar, sair } = useSessao();
+  const { eu, recarregar } = useSessao();
   const [nome, setNome] = useState(eu?.usuario.nome ?? '');
   const [apelido, setApelido] = useState(eu?.usuario.apelido ?? '');
   const [cpf, setCpf] = useState(eu?.usuario.cpf ? fmtCpf(eu.usuario.cpf) : '');
@@ -53,7 +54,7 @@ export function BemVindo({ convitePendente }: { convitePendente: string | null }
             Continuar
           </button>
         </form>
-        <button className="botao fantasma" onClick={() => void sair()}>Sair</button>
+        <div className="acesso-rodape"><BotaoSair /></div>
       </main>
     );
   }
@@ -80,6 +81,7 @@ export function BemVindo({ convitePendente }: { convitePendente: string | null }
       {(eu?.papeis.cuidador || eu?.papeis.acompanha || eu?.papeis.empresa) && (
         <button className="botao fantasma" onClick={() => navegar('/', true)}>Voltar para o app</button>
       )}
+      <div className="acesso-rodape"><BotaoSair /></div>
     </main>
   );
 }

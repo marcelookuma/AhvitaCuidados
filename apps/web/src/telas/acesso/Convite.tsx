@@ -6,6 +6,7 @@ import { useSessao } from '../../sessao';
 import { useCarregar } from '../../hooks';
 import { Carregando, ErroGeral, Ouvir, useAcao } from '../../componentes/ui';
 import { PERFIL_ATIVO } from '../../rota';
+import { BotaoSair } from '../../componentes/sair';
 
 /**
  * Aceitar convite já logado(a). Para cuidador(a) o fluxo completo fica no
@@ -35,6 +36,7 @@ export function Convite({ codigo, aoTerminar }: { codigo: string; aoTerminar: ()
         <h1>Convite</h1>
         <ErroGeral erro={c.erro} />
         <button className="botao largo" onClick={recusar}>Continuar</button>
+        <div className="acesso-rodape"><BotaoSair /></div>
       </main>
     );
   }
@@ -85,6 +87,7 @@ export function Convite({ codigo, aoTerminar }: { codigo: string; aoTerminar: ()
         ✓ Aceitar
       </button>
       <button className="botao secundario largo" onClick={recusar}>Agora não</button>
+      <div className="acesso-rodape"><BotaoSair /></div>
     </main>
   );
 }

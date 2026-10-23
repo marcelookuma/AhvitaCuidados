@@ -5,6 +5,7 @@ import { navegar, PERFIL_ATIVO } from '../../rota';
 import { useSessao } from '../../sessao';
 import { ErroGeral, Ouvir, useAcao } from '../../componentes/ui';
 import { falar } from '../../voz';
+import { BotaoSair } from '../../componentes/sair';
 
 /**
  * Onboarding do(a) Cuidador(a) (6 passos curtos, com 🔊 em todos):
@@ -148,6 +149,7 @@ export function OnboardingCuidador({ codigoInicial, aoTerminar }: { codigoInicia
           )}
         </div>
       )}
+      <div className="acesso-rodape"><BotaoSair /></div>
     </main>
   );
 }

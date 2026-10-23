@@ -3,6 +3,7 @@ import { PAPEIS, type Pessoa } from '@cuidados/core';
 import { api } from '../../servicos';
 import { casar, navegar, useCaminho } from '../../rota';
 import { useSessao } from '../../sessao';
+import { BotaoSair } from '../../componentes/sair';
 import { useCarregar } from '../../hooks';
 import { Carregando, Vazio } from '../../componentes/ui';
 import { Conversa } from '../conversa/Conversa';
@@ -28,7 +29,7 @@ const ABAS: { k: string; e: string; t: string; pode: (p: Pessoa) => boolean }[] 
 /** Painel de quem acompanha: gestor(a), Rede de Apoio e equipe de saúde (o que cada um vê depende das permissões). */
 export function AppAcompanhamento() {
   const caminho = useCaminho();
-  const { eu, sair } = useSessao();
+  const { eu } = useSessao();
   const lista = useCarregar(() => api.pessoas());
   const m = casar('/g/:id/:aba', caminho) ?? casar('/g/:id', caminho);
   const pessoas = lista.dados?.pessoas.filter((p) => p.meu_papel !== 'empresa') ?? [];
@@ -37,7 +38,7 @@ export function AppAcompanhamento() {
   if (!m) {
     if (pessoas.length === 1) { queueMicrotask(() => navegar(`/g/${pessoas[0].id}`, true)); return <Carregando />; }
     return (
-      <Moldura pessoas={pessoas} atual={null} aoSair={sair} temOutros={!!(eu?.papeis.cuidador || eu?.papeis.empresa)}>
+      <Moldura pessoas={pessoas} atual={null} temOutros={!!(eu?.papeis.cuidador || eu?.papeis.empresa)}>
         <main className="principal">
           <h1>Pessoas que você acompanha</h1>
           {pessoas.length === 0 && <Vazio e="🧭">Nenhuma pessoa ainda.<br /><button className="botao" style={{ marginTop: '1em' }} onClick={() => navegar('/bem-vindo/gestor')}>Cadastrar pessoa cuidada</button></Vazio>}
@@ -61,7 +62,7 @@ export function AppAcompanhamento() {
   const recarregarPessoa = () => void lista.recarregar(true);
 
   return (
-    <Moldura pessoas={pessoas} atual={pessoa} aoSair={sair} temOutros={!!(eu?.papeis.cuidador || eu?.papeis.empresa)}>
+    <Moldura pessoas={pessoas} atual={pessoa} temOutros={!!(eu?.papeis.cuidador || eu?.papeis.empresa)}>
       <nav className="lateral" aria-label="Seções">
         <div className="titulo">{pessoa.apelido}</div>
         {abas.map((a) => (
@@ -84,7 +85,7 @@ export function AppAcompanhamento() {
   );
 }
 
-function Moldura({ pessoas, atual, children, aoSair, temOutros }: { pessoas: Pessoa[]; atual: Pessoa | null; children: ReactNode; aoSair: () => void; temOutros: boolean }) {
+function Moldura({ pessoas, atual, children, temOutros }: { pessoas: Pessoa[]; atual: Pessoa | null; children: ReactNode; temOutros: boolean }) {
   return (
     <div className="painel modo-painel">
       <header className="painel-topo">
@@ -97,7 +98,7 @@ function Moldura({ pessoas, atual, children, aoSair, temOutros }: { pessoas: Pes
         )}
         <span className="cresce" />
         {temOutros && <button className="botao secundario pequeno" onClick={() => navegar('/perfil')}>Trocar perfil</button>}
-        <button className="botao fantasma pequeno" onClick={aoSair}>Sair</button>
+        <BotaoSair variante="pequeno" rotulo="Sair" />
       </header>
       <div className={atual ? 'painel-corpo' : ''}>{children}</div>
     </div>
