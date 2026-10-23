@@ -22,6 +22,8 @@ erDiagram
   empresas |o--o{ pessoas_cuidadas : clientes
   pessoas_cuidadas ||--o{ alertas : gera
   usuarios ||--o{ consentimentos : dá
+  empresas ||--o{ pedidos_rede : "pede / recebe"
+  usuarios ||--o{ pedidos_rede : "pede / recebe"
   admin_usuarios ||--o{ admin_sessoes : tem
   usuarios ||--o{ log_acessos : "acessos e usos"
   usuarios ||--o{ uso_diario : "leituras somadas por dia"
@@ -47,6 +49,7 @@ erDiagram
 | `consentimentos` | LGPD | termos, dados_saude, responsavel_legal, versionados |
 | `auditoria` | trilha encadeada por hash | sem dado de saúde |
 | `eventos_saida` | outbox | base para push/WhatsApp/WebSocket |
+| `pedidos_rede` | pedido para entrar na rede de uma empresa, nos dois sentidos (`004_pedidos_rede.sql`) | `origem` empresa/cuidador; `status` pendente/aceito/recusado/cancelado/expirado; `chave_pendente` única garante 1 pendente por empresa + cuidador(a) sem gatilho; vence em 30 dias |
 | `admin_usuarios` | equipe do painel `/admin` | e-mail + `google_sub` do 1º acesso; papel leitura/operador/dono (`003_admin.sql`) |
 | `admin_sessoes` | sessões do painel | só o SHA-256 do token; 8 h, cai após 30 min parada |
 | `log_acessos` | log de acessos e usos de todos os perfis e do painel | entradas/saídas, escritas, erros, exportações e tudo do painel; quem, perfil, rota (padrão), recurso, status, IP, aparelho; **sem corpo nem dado de saúde**; guarda ≥ 6 meses |

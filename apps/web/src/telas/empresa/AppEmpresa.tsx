@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MODALIDADES, hora, isoLocal, periodo, reais, telefone, type ConviteCriado } from '@cuidados/core';
+import { MODALIDADES, dia, hora, isoLocal, periodo, reais, telefone, type ConviteCriado, type PedidoRede } from '@cuidados/core';
 import { api } from '../../servicos';
 import { busca, casar, navegar, useCaminho } from '../../rota';
 import { useSessao } from '../../sessao';
@@ -149,9 +149,16 @@ function Atendimentos({ id }: { id: string }) {
   );
 }
 
+const NOME_MOD = (m: string) => (m === 'clt' ? 'CLT' : MODALIDADES[m] ?? m);
+const RESPOSTA: Record<string, [string, string]> = {
+  aceito: ['ok', 'Aceitou'], recusado: ['', 'Não aceitou'], cancelado: ['', 'Pedido desfeito'], expirado: ['', 'Venceu sem resposta'],
+};
+
 function Equipe({ id, admin }: { id: string; admin: boolean }) {
+  const lanche = useLanche();
   const r = useCarregar(() => api.equipe(id), [id]);
   const [novo, setNovo] = useState<{ tipo: string; nome: string; telefone: string; modalidade: string } | null>(null);
+  const [pedido, setPedido] = useState<{ telefone: string; modalidade: string; mensagem: string } | null>(null);
   const [convite, setConvite] = useState<ConviteCriado | null>(null);
   const criar = useAcao(async () => {
     if (!novo) return;
@@ -159,13 +166,65 @@ function Equipe({ id, admin }: { id: string; admin: boolean }) {
     setNovo(null);
     await r.recarregar(true);
   });
+  const pedir = useAcao(async () => {
+    if (!pedido) return;
+    const res = await api.pedirRedeEmpresa(id, { telefone: pedido.telefone, modalidade: pedido.modalidade, mensagem: pedido.mensagem || undefined });
+    lanche(res.status === 'aceito' ? `${res.cuidador.nome} já tinha pedido para entrar: agora está na rede.` : `Pedido enviado para ${res.cuidador.nome}. Ele(a) responde no app.`);
+    setPedido(null);
+    await r.recarregar(true);
+  });
+  const responder = useAcao(async (p: PedidoRede, acao: 'aceitar' | 'recusar' | 'cancelar') => {
+    await api.responderPedidoRede(p.id, acao);
+    lanche(acao === 'aceitar' ? `${p.cuidador?.nome} entrou na rede.` : acao === 'recusar' ? 'Pedido recusado.' : 'Pedido desfeito.');
+    await r.recarregar(true);
+  });
   if (!r.dados) return <Carregando />;
+  const recebidos = r.dados.pedidos?.recebidos ?? [];
+  const enviados = r.dados.pedidos?.enviados ?? [];
+  const pendentes = enviados.filter((p) => p.status === 'pendente');
+  const respostas = enviados.filter((p) => p.status !== 'pendente');
   return (
     <>
       <div className="linha-h" style={{ flexWrap: 'wrap' }}><h1 className="cresce">Cuidadores(as)</h1>
-        <button className="botao" onClick={() => { setConvite(null); setNovo({ tipo: 'cuidador', nome: '', telefone: '', modalidade: 'mei' }); }}>➕ Convidar cuidador(a)</button>
-        {admin && <button className="botao secundario" onClick={() => { setConvite(null); setNovo({ tipo: 'membro', nome: '', telefone: '', modalidade: '' }); }}>Convidar alguém da equipe</button>}
+        <button className="botao" onClick={() => { setConvite(null); setNovo(null); setPedido({ telefone: '', modalidade: 'mei', mensagem: '' }); }}>🔎 Chamar quem já usa o app</button>
+        <button className="botao secundario" onClick={() => { setConvite(null); setPedido(null); setNovo({ tipo: 'cuidador', nome: '', telefone: '', modalidade: 'mei' }); }}>➕ Convidar cuidador(a)</button>
+        {admin && <button className="botao secundario" onClick={() => { setConvite(null); setPedido(null); setNovo({ tipo: 'membro', nome: '', telefone: '', modalidade: '' }); }}>Convidar alguém da equipe</button>}
       </div>
+
+      {recebidos.length > 0 && (
+        <section className="pilha">
+          <h2>Pedidos para entrar na rede</h2>
+          {recebidos.map((p) => (
+            <div key={p.id} className="alerta-linha pedido-empresa">
+              <span className="cresce"><b>{p.cuidador?.nome}</b> <span className="sutil">celular final {p.cuidador?.telefone_final ?? '—'}</span><br />
+                Quer entrar na rede como {p.modalidade === 'mei' ? 'MEI' : 'autônomo(a)'} · <span className="fraco">pediu {dia(p.criado_em).toLowerCase()}</span>
+                {p.mensagem && <><br /><span className="sutil">“{p.mensagem}”</span></>}</span>
+              <button className="botao pequeno" disabled={responder.enviando} onClick={() => void responder.executar(p, 'aceitar')}>Aceitar</button>
+              <button className="botao secundario pequeno" disabled={responder.enviando} onClick={() => void responder.executar(p, 'recusar')}>Recusar</button>
+            </div>
+          ))}
+          <ErroGeral erro={responder.erro} />
+        </section>
+      )}
+
+      {pedido && (
+        <form className="cartao pilha" onSubmit={(e) => { e.preventDefault(); void pedir.executar(); }}>
+          <h3 style={{ margin: 0 }}>Chamar para a rede quem já é cuidador(a) no app</h3>
+          <p className="sutil" style={{ margin: 0 }}>Digite o celular. A pessoa recebe o pedido no app e decide. Até ela aceitar, a empresa vê só o primeiro nome. Se ainda não usa o app, mande um convite.</p>
+          <div className="grade-2">
+            <Campo rotulo="Celular do(a) cuidador(a)"><input value={pedido.telefone} onChange={(e) => setPedido({ ...pedido, telefone: e.target.value })} inputMode="tel" required /></Campo>
+            <Campo rotulo="Forma de contratação" ajuda="MEI e autônomo(a): prestação de serviço. A agenda é dele(a); a empresa só envia propostas dentro da disponibilidade.">
+              <select value={pedido.modalidade} onChange={(e) => setPedido({ ...pedido, modalidade: e.target.value })}>
+                {['mei', 'autonomo', 'clt'].map((k) => <option key={k} value={k}>{k === 'clt' ? 'CLT (empregado(a) da empresa)' : MODALIDADES[k]}</option>)}
+              </select>
+            </Campo>
+          </div>
+          <Campo rotulo="Recado (opcional)"><input value={pedido.mensagem} onChange={(e) => setPedido({ ...pedido, mensagem: e.target.value })} maxLength={200} placeholder="Ex.: atendemos na Zona Sul" /></Campo>
+          <ErroGeral erro={pedir.erro} />
+          <div className="linha-h"><button className="botao" disabled={pedir.enviando}>Enviar pedido</button><button type="button" className="botao fantasma" onClick={() => setPedido(null)}>Cancelar</button></div>
+        </form>
+      )}
+
       {novo && (
         <form className="cartao pilha" onSubmit={(e) => { e.preventDefault(); void criar.executar(); }}>
           <h3 style={{ margin: 0 }}>{novo.tipo === 'cuidador' ? 'Convidar cuidador(a)' : 'Convidar para a equipe da empresa'}</h3>
@@ -194,24 +253,42 @@ function Equipe({ id, admin }: { id: string; admin: boolean }) {
       <table className="tabela responsiva">
         <thead><tr><th>Nome</th><th>Contratação</th><th>Agenda</th><th /></tr></thead>
         <tbody>
-          {r.dados.cuidadores.length === 0 && <tr><td colSpan={4} className="sutil">Ninguém na rede ainda.</td></tr>}
+          {r.dados.cuidadores.length === 0 && pendentes.length === 0 && r.dados.convites_pendentes.length === 0 && <tr><td colSpan={4} className="sutil">Ninguém na rede ainda.</td></tr>}
           {r.dados.cuidadores.map((c) => (
             <tr key={c.id} style={c.status === 'encerrado' ? { opacity: 0.5 } : undefined}>
               <td><b>{c.nome}</b><br /><span className="sutil">{telefone(c.telefone)}</span></td>
-              <td>{c.modalidade === 'clt' ? 'CLT' : MODALIDADES[c.modalidade]}</td>
-              <td>{c.marcou_disponibilidade ? <span className="etiqueta ok">Marcou disponibilidade</span> : <span className="etiqueta">Sem disponibilidade marcada</span>}</td>
+              <td>{NOME_MOD(c.modalidade)}</td>
+              <td>{c.status === 'encerrado' ? <span className="etiqueta">Fora da rede</span> : c.marcou_disponibilidade ? <span className="etiqueta ok">Marcou disponibilidade</span> : <span className="etiqueta">Sem disponibilidade marcada</span>}</td>
               <td className="linha-h">
                 <button className="botao fantasma pequeno" onClick={() => navegar(`/e/${id}/conversas?c=${c.conversa_id}`)}>Conversar</button>
                 {admin && c.status === 'ativo' && <button className="botao fantasma pequeno" onClick={async () => { if (confirm(`Encerrar ${c.nome} na rede da empresa?`)) { await api.encerrarCuidadorEmpresa(id, c.id); await r.recarregar(true); } }}>Encerrar</button>}
               </td>
             </tr>
           ))}
+          {pendentes.map((p) => (
+            <tr key={p.id}>
+              <td>{p.cuidador?.nome}<br /><span className="sutil">celular final {p.cuidador?.telefone_final ?? '—'}</span></td>
+              <td>{NOME_MOD(p.modalidade)}</td>
+              <td><span className="etiqueta atencao">Pedido enviado, esperando resposta</span></td>
+              <td><button className="botao fantasma pequeno" disabled={responder.enviando} onClick={() => void responder.executar(p, 'cancelar')}>Desfazer pedido</button></td>
+            </tr>
+          ))}
           {r.dados.convites_pendentes.map((c) => (
-            <tr key={c.id}><td>{c.nome}</td><td>{c.modalidade ? MODALIDADES[c.modalidade] ?? c.modalidade : ''}</td><td><span className="etiqueta">Convite {c.codigo}</span></td><td /></tr>
+            <tr key={c.id}><td>{c.nome}</td><td>{c.modalidade ? NOME_MOD(c.modalidade) : ''}</td><td><span className="etiqueta">Convite {c.codigo}</span></td><td /></tr>
           ))}
         </tbody>
       </table>
-      <p className="fraco">A empresa não vê a agenda completa de cada cuidador(a): só se ele(a) está disponível quando uma proposta é enviada.</p>
+      {respostas.length > 0 && (
+        <section className="pilha">
+          <h3 style={{ margin: 0 }}>Respostas dos últimos 30 dias</h3>
+          <ul className="lista-respostas">
+            {respostas.map((p) => (
+              <li key={p.id}><span className={`etiqueta ${RESPOSTA[p.status]?.[0] ?? ''}`}>{RESPOSTA[p.status]?.[1] ?? p.status}</span> {p.cuidador?.nome} <span className="fraco">{p.respondido_em ? dia(p.respondido_em).toLowerCase() : ''}</span></li>
+            ))}
+          </ul>
+        </section>
+      )}
+      <p className="fraco">Entrar na rede não é exclusividade: o(a) cuidador(a) pode estar em outras empresas, recusar pedidos e propostas e sair quando quiser. A empresa não vê a agenda completa de ninguém, só se a pessoa está disponível quando uma proposta é enviada.</p>
     </>
   );
 }

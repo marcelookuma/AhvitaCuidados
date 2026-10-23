@@ -29,7 +29,10 @@ const ACAO: Record<string, string> = {
   'GET /pessoas/{id}/feed': 'Abriu a conversa', 'GET /pessoas/{id}/painel': 'Abriu o acompanhamento', 'GET /pessoas/{id}/registros': 'Viu a linha do tempo',
   'GET /pessoas/{id}': 'Viu o cadastro da pessoa', 'GET /pessoas/{id}/remedios': 'Viu os remédios', 'GET /midias/{id}': 'Viu foto ou ouviu áudio',
   'GET /eu': 'Abriu o app', 'GET /eu/inicio': 'Abriu a lista de conversas', 'GET /agenda': 'Abriu a própria agenda', 'GET /pessoas/{id}/vinculos': 'Viu quem participa',
-  'PUT /agenda/disponibilidade': 'Mudou a própria agenda', 'POST /midias': 'Enviou foto ou áudio', 'POST /registros/{id}/anular': 'Corrigiu registro',
+  'PUT /agenda/disponibilidade': 'Mudou a própria agenda',
+  'POST /empresas/{id}/pedidos-rede': 'Empresa chamou cuidador(a) para a rede', 'POST /eu/pedidos-rede': 'Pediu para entrar na rede de empresa',
+  'POST /pedidos-rede/{id}/aceitar': 'Aceitou pedido de rede', 'POST /pedidos-rede/{id}/recusar': 'Recusou pedido de rede',
+  'POST /pedidos-rede/{id}/cancelar': 'Desfez pedido de rede', 'POST /eu/empresas/{id}/sair': 'Saiu da rede de empresa', 'POST /midias': 'Enviou foto ou áudio', 'POST /registros/{id}/anular': 'Corrigiu registro',
 };
 export function descrever(l: Pick<Linha, 'metodo' | 'rota' | 'evento'>) {
   if (l.evento !== 'requisicao') return NOME_EVENTO[l.evento] ?? l.evento;

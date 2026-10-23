@@ -221,3 +221,25 @@ export interface Empresa {
 }
 
 export interface ConviteCriado { id: string; codigo: string; link: string; expira_em: string; whatsapp: string }
+
+/** Pedido para entrar na rede de uma empresa (a empresa pede ou o(a) cuidador(a) pede; o outro lado aceita). */
+export interface PedidoRede {
+  id: string;
+  origem: 'empresa' | 'cuidador';
+  modalidade: 'mei' | 'autonomo' | 'clt';
+  mensagem: string | null;
+  status: 'pendente' | 'aceito' | 'recusado' | 'cancelado' | 'expirado';
+  criado_em: string;
+  expira_em: string;
+  respondido_em: string | null;
+  empresa?: { id: string; nome: string };
+  cuidador?: { id: string; nome: string; telefone_final: string | null };
+}
+
+export interface MinhaRede {
+  empresas: { id: string; nome: string; modalidade: string; conversa_id: string }[];
+  recebidos: PedidoRede[];
+  enviados: PedidoRede[];
+}
+
+export interface EmpresaEncontrada { id: string; nome: string; razao_social: string; cnpj: string; na_rede: boolean; pedido_pendente: boolean }
