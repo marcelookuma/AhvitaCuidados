@@ -59,10 +59,10 @@ final class VisaoAdmin extends AdminBase
 
         // Ativos = quem usou o app (leitura somada por dia ou ação registrada no log).
         $ativos = fn(string $desde) => (int)Bd::valor(
-            "SELECT COUNT(DISTINCT u) FROM (
+            "SELECT COUNT(DISTINCT x.u) FROM (
                 SELECT usuario_id AS u FROM uso_diario WHERE dia >= :d
                 UNION SELECT usuario_id FROM log_acessos WHERE ator = 'usuario' AND criado_em >= :dt
-             ) x",
+             ) x JOIN usuarios us ON us.id = x.u AND us.excluido_em IS NULL",
             ['d' => $desde, 'dt' => (new \DateTimeImmutable($desde, Tempo::fuso()))->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s')]
         );
 
