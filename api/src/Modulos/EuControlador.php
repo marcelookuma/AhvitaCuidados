@@ -194,6 +194,112 @@ final class EuControlador extends Controlador
 
     /** POST /eu/excluir {confirmar:"EXCLUIR"} */
     /**
+     * GET /eu/convites — tudo o que espera uma resposta minha, para o início de cada perfil:
+     *   - convites por código mandados para o meu celular (confirmado) e ainda não usados;
+     *   - pedidos de empresas para eu entrar na rede (cuidador(a));
+     *   - pedidos de empresas para acompanhar uma pessoa que eu organizo (gestor(a));
+     *   - pedidos que chegaram às empresas de que faço parte (equipe da empresa).
+     * Cada item já vem com o texto curto e para onde levar.
+     */
+    public function convites(): Resposta
+    {
+        $u = $this->u();
+        $uid = (string)$u['id'];
+        $agora = Tempo::agoraSql();
+        RedeControlador::expirar();
+        ClientesControlador::expirar();
+        $itens = [];
+        $nomeEmpresa = fn($e) => $e['nome_fantasia'] ?: $e['razao_social'];
+
+        // 1. Convites por código para o meu celular (só celular confirmado identifica a pessoa).
+        if ($u['telefone'] !== null && (int)($u['telefone_confirmado'] ?? 1) === 1) {
+            foreach (Bd::todos(
+                "SELECT c.*, p.apelido AS pessoa, e.nome_fantasia, e.razao_social FROM convites c
+                   LEFT JOIN pessoas_cuidadas p ON p.id = c.pessoa_id LEFT JOIN empresas e ON e.id = c.empresa_id
+                  WHERE c.destino_telefone = :t AND c.aceito_em IS NULL AND c.revogado_em IS NULL AND c.expira_em > :a
+                    AND c.criado_por <> :u AND (c.pessoa_id IS NULL OR p.excluido_em IS NULL)
+                  ORDER BY c.criado_em DESC LIMIT 20",
+                ['t' => $u['telefone'], 'a' => $agora, 'u' => $uid]
+            ) as $c) {
+                // Já participa? Então o convite não pede nada.
+                if ($c['tipo'] === 'vinculo' && Bd::valor("SELECT 1 FROM vinculos WHERE pessoa_id = :p AND usuario_id = :u AND status = 'ativo'", ['p' => $c['pessoa_id'], 'u' => $uid]) !== null) continue;
+                $de = Formata::pessoaPublica((string)$c['criado_por'])['nome'];
+                $empresa = $c['empresa_id'] ? $nomeEmpresa($c) : null;
+                [$icone, $titulo] = match ($c['tipo']) {
+                    'vinculo' => match ($c['papel']) {
+                        'cuidador' => ['🤲', "$de convidou você para cuidar de {$c['pessoa']}"],
+                        'rede' => ['👥', "$de convidou você para a Rede de Apoio de {$c['pessoa']}"],
+                        'profissional' => ['🩺', "$de convidou você para a equipe de saúde de {$c['pessoa']}"],
+                        'gestor' => ['🧭', "$de convidou você para a gestão do cuidado de {$c['pessoa']}"],
+                        default => ['💌', "$de convidou você para o cuidado de {$c['pessoa']}"],
+                    },
+                    'empresa_cuidador' => ['🏢', "$empresa convidou você para a rede de cuidadores(as)"],
+                    'empresa_membro' => ['🏢', "$empresa convidou você para a equipe da empresa"],
+                    'empresa_cliente' => ['🏢', "$empresa quer acompanhar o cuidado de uma pessoa que você organiza"],
+                    default => ['💌', "$de mandou um convite"],
+                };
+                $itens[] = ['id' => $c['id'], 'tipo' => 'convite', 'icone' => $icone, 'titulo' => $titulo,
+                    'texto' => 'Você decide se aceita.', 'rotulo' => 'Ver convite', 'link' => '/convite/' . $c['codigo'],
+                    'codigo' => $c['codigo'], 'pode_recusar' => true, 'em' => Tempo::sqlParaIso($c['criado_em'])];
+            }
+        }
+
+        // 2. Empresas querendo o(a) cuidador(a) na rede.
+        foreach (Bd::todos(
+            "SELECT pr.*, e.nome_fantasia, e.razao_social FROM pedidos_rede pr JOIN empresas e ON e.id = pr.empresa_id
+              WHERE pr.usuario_id = :u AND pr.origem = 'empresa' AND pr.status = 'pendente' ORDER BY pr.criado_em DESC",
+            ['u' => $uid]
+        ) as $p) {
+            $itens[] = ['id' => $p['id'], 'tipo' => 'pedido_rede', 'icone' => '🏢', 'titulo' => $nomeEmpresa($p) . ' quer você na rede dela',
+                'texto' => 'Você decide. Pode estar em outras empresas também.', 'rotulo' => 'Responder', 'link' => '/c/empresas',
+                'codigo' => null, 'pode_recusar' => false, 'em' => Tempo::sqlParaIso($p['criado_em'])];
+        }
+
+        // 3. Empresas pedindo para acompanhar uma pessoa que eu organizo.
+        $pedidosCliente = Bd::todos(
+            "SELECT pc.*, e.nome_fantasia, e.razao_social FROM pedidos_cliente pc JOIN empresas e ON e.id = pc.empresa_id
+              WHERE pc.gestor_id = :u AND pc.origem = 'empresa' AND pc.status = 'pendente' ORDER BY pc.criado_em DESC",
+            ['u' => $uid]
+        );
+        if ($pedidosCliente !== []) {
+            // Leva para "Quem cuida" de uma pessoa que eu organizo e que ainda não tem empresa.
+            $livre = Bd::valor(
+                "SELECT p.id FROM vinculos v JOIN pessoas_cuidadas p ON p.id = v.pessoa_id
+                  WHERE v.usuario_id = :u AND v.papel = 'gestor' AND v.status = 'ativo' AND p.excluido_em IS NULL AND p.empresa_id IS NULL
+                  ORDER BY p.apelido LIMIT 1",
+                ['u' => $uid]
+            );
+            foreach ($pedidosCliente as $p) {
+                $itens[] = ['id' => $p['id'], 'tipo' => 'pedido_cliente', 'icone' => '🏢',
+                    'titulo' => $nomeEmpresa($p) . ' quer acompanhar o cuidado de uma pessoa que você organiza',
+                    'texto' => $livre ? 'Você escolhe a pessoa e o que a empresa pode ver.' : 'Todas as pessoas que você organiza já têm empresa. Encerre uma relação antes, se quiser trocar.',
+                    'rotulo' => 'Responder', 'link' => $livre ? "/g/$livre/pessoas" : '/g', 'codigo' => null, 'pode_recusar' => false,
+                    'em' => Tempo::sqlParaIso($p['criado_em'])];
+            }
+        }
+
+        // 4. Pedidos que chegaram às empresas de que faço parte.
+        foreach (Bd::todos(
+            'SELECT e.id, e.nome_fantasia, e.razao_social FROM empresa_membros m JOIN empresas e ON e.id = m.empresa_id WHERE m.usuario_id = :u AND m.ativo = 1',
+            ['u' => $uid]
+        ) as $e) {
+            $nRede = (int)Bd::valor("SELECT COUNT(*) FROM pedidos_rede WHERE empresa_id = :e AND origem = 'cuidador' AND status = 'pendente'", ['e' => $e['id']]);
+            if ($nRede > 0) {
+                $itens[] = ['id' => 'rede-' . $e['id'], 'tipo' => 'empresa_rede', 'icone' => '🤲',
+                    'titulo' => $nRede === 1 ? '1 cuidador(a) pediu para entrar na rede' : "$nRede cuidadores(as) pediram para entrar na rede",
+                    'texto' => $nomeEmpresa($e), 'rotulo' => 'Ver pedidos', 'link' => '/e/' . $e['id'] . '/equipe', 'codigo' => null, 'pode_recusar' => false, 'em' => null];
+            }
+            $nCli = (int)Bd::valor("SELECT COUNT(*) FROM pedidos_cliente WHERE empresa_id = :e AND origem = 'gestor' AND status = 'pendente'", ['e' => $e['id']]);
+            if ($nCli > 0) {
+                $itens[] = ['id' => 'cliente-' . $e['id'], 'tipo' => 'empresa_cliente', 'icone' => '🏡',
+                    'titulo' => $nCli === 1 ? '1 gestor(a) pediu para a empresa acompanhar uma pessoa' : "$nCli gestores(as) pediram para a empresa acompanhar",
+                    'texto' => $nomeEmpresa($e), 'rotulo' => 'Ver pedidos', 'link' => '/e/' . $e['id'] . '/clientes', 'codigo' => null, 'pode_recusar' => false, 'em' => null];
+            }
+        }
+        return Resposta::json(['itens' => $itens]);
+    }
+
+    /**
      * POST /eu/contato/codigo {destino} — trocar celular ou e-mail, passo 1.
      * O código vai para o contato NOVO: assim ninguém troca para um número
      * que não é seu, e um erro de digitação não tranca a conta.

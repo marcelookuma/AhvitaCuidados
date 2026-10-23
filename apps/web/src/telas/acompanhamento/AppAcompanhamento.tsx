@@ -14,6 +14,7 @@ import { Plano } from './Plano';
 import { Equipe } from './Equipe';
 import { Atendimentos } from './Atendimentos';
 import { Dados } from './Dados';
+import { ConvitesParaVoce } from '../../componentes/convites';
 
 const ABAS: { k: string; e: string; t: string; pode: (p: Pessoa) => boolean }[] = [
   { k: 'hoje', e: '🏠', t: 'Hoje', pode: () => true },
@@ -41,6 +42,7 @@ export function AppAcompanhamento() {
       <Moldura pessoas={pessoas} atual={null} temOutros={!!(eu?.papeis.cuidador || eu?.papeis.empresa)}>
         <main className="principal">
           <h1>Pessoas que você acompanha</h1>
+          <ConvitesParaVoce />
           {pessoas.length === 0 && <Vazio e="🧭">Nenhuma pessoa ainda.<br /><button className="botao" style={{ marginTop: '1em' }} onClick={() => navegar('/bem-vindo/gestor')}>Cadastrar pessoa cuidada</button></Vazio>}
           <div className="indicadores">
             {pessoas.map((p) => (

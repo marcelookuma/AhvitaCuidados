@@ -1,6 +1,7 @@
 import { navegar } from '../../rota';
 import { useSessao } from '../../sessao';
 import { BotaoSair } from '../../componentes/sair';
+import { ConvitesParaVoce } from '../../componentes/convites';
 import { PERFIL_ATIVO } from '../../rota';
 
 /** Quem tem mais de um papel escolhe como entrar (fica lembrado no aparelho). */
@@ -11,6 +12,7 @@ export function EscolhaPerfil() {
   return (
     <main className="acesso">
       <h1>Como você quer entrar agora?</h1>
+      <ConvitesParaVoce />
       <div className="escolhas">
         {eu.papeis.cuidador && (
           <button className="escolha" onClick={() => ir('/c')}>

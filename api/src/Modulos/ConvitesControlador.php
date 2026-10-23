@@ -177,6 +177,22 @@ final class ConvitesControlador extends Controlador
         return Resposta::json($resultado);
     }
 
+    /**
+     * POST /convites/{codigo}/recusar — "Não é para mim": quem recebeu o convite no celular
+     * recusa (ex.: número errado). Só para o celular confirmado de destino. Quem convidou vê sumir dos pendentes.
+     */
+    public function recusar(): Resposta
+    {
+        $c = $this->buscar($this->req->param('codigo'));
+        $u = $this->u();
+        if ($u['telefone'] === null || (int)($u['telefone_confirmado'] ?? 1) !== 1 || $c['destino_telefone'] !== $u['telefone']) {
+            throw ErroHttp::naoEncontrado('Convite não encontrado.');
+        }
+        Bd::exec('UPDATE convites SET revogado_em = :a WHERE id = :id AND aceito_em IS NULL', ['a' => Tempo::agoraSql(), 'id' => $c['id']]);
+        Auditoria::registrar('convite.recusado', 'convite', (string)$c['id'], $c['pessoa_id'], ['tipo' => $c['tipo']]);
+        return Resposta::vazio();
+    }
+
     /** POST /convites/{id}/revogar */
     public function revogar(): Resposta
     {

@@ -38,6 +38,7 @@ php api/tests/admin.php http://127.0.0.1:8099   # 68 verificações do painel /a
 php api/tests/rede.php http://127.0.0.1:8099    # 45 verificações dos pedidos de rede empresa ↔ cuidador(a)
 php api/tests/conta.php http://127.0.0.1:8099   # Meus dados (editar o próprio cadastro); SEM_CELULAR_URL testa servidor sem SMS
 php api/tests/clientes.php http://127.0.0.1:8099 # 40 verificações do vínculo empresa ↔ pessoa cuidada
+php api/tests/convites.php http://127.0.0.1:8099 # 15 verificações de "Convites para você" no início
 php api/bin/auditoria.php  # confere a trilha de auditoria encadeada
 npm run pacote:kinghost    # gera pacote-kinghost/ (www/ + privado/)
 ```

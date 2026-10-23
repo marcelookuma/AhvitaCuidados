@@ -43,6 +43,7 @@ final class Rotas
         $r->add('POST', '/eu/contato/confirmar', [Eu::class, 'confirmarContato']);
         $r->add('POST', '/eu/contato/remover', [Eu::class, 'removerContato']);
         $r->add('GET', '/eu/inicio', [Eu::class, 'inicio']);
+        $r->add('GET', '/eu/convites', [Eu::class, 'convites']);
         $r->add('GET', '/eu/exportar', [Eu::class, 'exportar']);
         $r->add('POST', '/eu/excluir', [Eu::class, 'excluir']);
 
@@ -63,6 +64,7 @@ final class Rotas
         $r->add('POST', '/empresas/{id}/convites', [Convites::class, 'criarParaEmpresa']);
         $r->add('GET', '/convites/{codigo}', [Convites::class, 'ver']);
         $r->add('POST', '/convites/{codigo}/aceitar', [Convites::class, 'aceitar']);
+        $r->add('POST', '/convites/{codigo}/recusar', [Convites::class, 'recusar']);
         $r->add('POST', '/convites/{id}/revogar', [Convites::class, 'revogar']);
         $r->add('PATCH', '/vinculos/{id}', [Convites::class, 'atualizarVinculo']);
         $r->add('POST', '/vinculos/{id}/encerrar', [Convites::class, 'encerrarVinculo']);

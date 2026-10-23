@@ -24,7 +24,7 @@ const ACAO: Record<string, string> = {
   'POST /pessoas': 'Cadastrou pessoa cuidada', 'PATCH /pessoas/{id}': 'Alterou cadastro da pessoa', 'GET /pessoas/{id}/exportar': 'Exportou dados da pessoa',
   'POST /pessoas/{id}/excluir': 'Excluiu dados da pessoa', 'POST /pessoas/{id}/registros': 'Registrou cuidado', 'POST /pessoas/{id}/mensagens': 'Mandou mensagem',
   'POST /pessoas/{id}/presencas': 'Iniciou serviço', 'POST /presencas/{id}/finalizar': 'Finalizou serviço', 'POST /pessoas/{id}/convites': 'Convidou alguém',
-  'POST /convites/{codigo}/aceitar': 'Aceitou convite', 'PATCH /vinculos/{id}': 'Mudou permissões', 'POST /vinculos/{id}/encerrar': 'Encerrou vínculo',
+  'POST /convites/{codigo}/aceitar': 'Aceitou convite', 'POST /convites/{codigo}/recusar': 'Recusou convite (não era para ela)', 'GET /eu/convites': 'Viu os convites', 'PATCH /vinculos/{id}': 'Mudou permissões', 'POST /vinculos/{id}/encerrar': 'Encerrou vínculo',
   'POST /pessoas/{id}/atendimentos': 'Propôs atendimento', 'POST /atendimentos/{id}/responder': 'Respondeu proposta', 'POST /atendimentos/{id}/confirmar': 'Confirmou ida',
   'GET /pessoas/{id}/feed': 'Abriu a conversa', 'GET /pessoas/{id}/painel': 'Abriu o acompanhamento', 'GET /pessoas/{id}/registros': 'Viu a linha do tempo',
   'GET /pessoas/{id}': 'Viu o cadastro da pessoa', 'GET /pessoas/{id}/remedios': 'Viu os remédios', 'GET /midias/{id}': 'Viu foto ou ouviu áudio',

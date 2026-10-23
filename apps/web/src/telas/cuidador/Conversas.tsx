@@ -6,6 +6,7 @@ import { useCarregar, useOnline, useRepetir } from '../../hooks';
 import { guardar, ler } from '../../armazenamento';
 import { Ouvir, Vazio, corDe } from '../../componentes/ui';
 import { AbasCuidador } from './AppCuidador';
+import { ConvitesParaVoce } from '../../componentes/convites';
 import { useEffect, useState } from 'react';
 
 function previa(u: ItemFeed | null, euId: string): string {
@@ -48,13 +49,7 @@ export function Conversas() {
           <div className="linha-h"><span className="cresce">Olá, <b>{nome}</b>. Toque no nome da pessoa para registrar e conversar.</span>
             <Ouvir texto={`Olá, ${nome}. Toque no nome da pessoa para registrar e conversar.`} /></div>
         </div>
-        {(r.dados?.pedidos_rede ?? 0) > 0 && (
-          <button className="conversa-linha" onClick={() => navegar('/c/empresas')}>
-            <span className="avatar" style={{ background: '#E4DDF5' }}>🏢</span>
-            <span className="cresce"><span className="nome">Uma empresa quer você na rede dela</span><span className="previa">Você decide se aceita</span></span>
-            <span className="fim"><span className="bolinha">{r.dados!.pedidos_rede}</span></span>
-          </button>
-        )}
+        <ConvitesParaVoce grande />
         {(r.dados?.propostas_abertas ?? 0) > 0 && (
           <button className="conversa-linha" onClick={() => navegar('/c/agenda')}>
             <span className="avatar" style={{ background: '#F7E7C9' }}>📅</span>

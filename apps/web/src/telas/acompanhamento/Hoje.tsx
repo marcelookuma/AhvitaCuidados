@@ -3,6 +3,7 @@ import { api } from '../../servicos';
 import { navegar } from '../../rota';
 import { useCarregar, useRepetir } from '../../hooks';
 import { Carregando, ErroGeral } from '../../componentes/ui';
+import { ConvitesParaVoce } from '../../componentes/convites';
 
 const ROTULO_ALERTA: Record<string, string> = {
   sem_confirmacao: '🔔 Sem resposta no prazo combinado',
@@ -25,6 +26,8 @@ export function Hoje({ pessoa }: { pessoa: Pessoa }) {
         <h1>{pessoa.apelido}</h1>
         <p className="sutil" style={{ margin: '.2em 0 0' }}>{pessoa.idade} anos · {d.em_servico.length ? d.em_servico.map((s) => `${s.cuidador.nome} em serviço desde ${hora(s.desde)}`).join(' · ') : 'Ninguém em serviço agora'}</p>
       </div>
+
+      <ConvitesParaVoce />
 
       {d.alertas.length > 0 && (
         <section className="pilha">
