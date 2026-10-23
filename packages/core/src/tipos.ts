@@ -19,6 +19,8 @@ export interface Usuario {
   cpf: string | null;
   telefone: string | null;
   email: string | null;
+  /** Conta vinculada ao Google ("Entrar com Google") */
+  google?: boolean;
   preferencias: Preferencias;
 }
 

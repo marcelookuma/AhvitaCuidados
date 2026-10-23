@@ -75,9 +75,10 @@ export function criarApi(op: OpcoesApi) {
 
   return {
     // Acesso
-    canais: () => get<{ canais: string[] }>('/auth/canais'),
+    canais: () => get<{ canais: string[]; google?: string | null }>('/auth/canais'),
     pedirCodigo: (destino: string, canal?: string) => post<{ canal: string; expira_em: string; codigo_teste?: string }>('/auth/codigo', { destino, canal }),
     entrar: (destino: string, codigo: string) => post<{ token: string; usuario: Usuario; novo: boolean }>('/auth/entrar', { destino, codigo }),
+    entrarGoogle: (credencial: string) => post<{ token: string; usuario: Usuario; novo: boolean }>('/auth/google', { credencial }),
     sair: () => post<void>('/auth/sair'),
 
     // Eu

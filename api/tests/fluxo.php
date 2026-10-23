@@ -324,6 +324,78 @@ $restam = (int)$pdo->query("SELECT COUNT(*) FROM registros WHERE pessoa_id = '$p
 confere('registros de saúde apagados', $restam === 0);
 confere('foto apagada do disco', req('GET', "/midias/$midia", null, $tCuid)['s'] === 404);
 
+echo "Entrar com Google\n";
+// Ligado só quando o servidor foi iniciado com GOOGLE_CLIENT_ID e GOOGLE_CERTIFICADOS_ARQUIVO (ambiente teste).
+$gCliente = getenv('GOOGLE_CLIENT_ID') ?: '';
+$gArquivo = getenv('GOOGLE_CERTIFICADOS_ARQUIVO') ?: '';
+if ($gCliente === '' || $gArquivo === '') {
+    echo "  (pulado: defina GOOGLE_CLIENT_ID e GOOGLE_CERTIFICADOS_ARQUIVO no servidor e aqui)\n";
+} else {
+    $novaChave = function (): array {
+        $k = openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
+        $csr = openssl_csr_new(['commonName' => 'teste'], $k, ['digest_alg' => 'sha256']);
+        openssl_x509_export(openssl_csr_sign($csr, null, $k, 1, ['digest_alg' => 'sha256']), $pem);
+        return [$k, $pem];
+    };
+    [$gChave, $gPem] = $novaChave();
+    [$gIntrusa] = $novaChave();
+    file_put_contents($gArquivo, json_encode(['kid-teste' => $gPem]));
+    $b64 = fn(string $s) => rtrim(strtr(base64_encode($s), '+/', '-_'), '=');
+    $jwt = function (array $dados, $chave = null) use ($b64, $gChave, $gCliente): string {
+        $d = $dados + ['iss' => 'https://accounts.google.com', 'aud' => $gCliente, 'iat' => time(), 'exp' => time() + 3600];
+        $base = $b64(json_encode(['alg' => 'RS256', 'kid' => 'kid-teste', 'typ' => 'JWT'])) . '.' . $b64(json_encode($d));
+        openssl_sign($base, $ass, $chave ?? $gChave, OPENSSL_ALGO_SHA256);
+        return $base . '.' . $b64($ass);
+    };
+    $pessoaG = ['sub' => '1000000000000000001', 'email' => 'Teresa.G@exemplo.com', 'email_verified' => true, 'name' => 'Teresa Gomes'];
+
+    $r = req('GET', '/auth/canais');
+    confere('canais informa o client_id do Google', ($r['j']['google'] ?? null) === $gCliente, $r['j']);
+    $r = req('POST', '/auth/google', ['credencial' => $jwt($pessoaG, $gIntrusa)]);
+    confere('assinatura falsa → 422', $r['s'] === 422 && $r['j']['erro']['codigo'] === 'google_invalido', $r['j']);
+    $r = req('POST', '/auth/google', ['credencial' => $jwt(['aud' => 'outro-app'] + $pessoaG)]);
+    confere('token de outro app → 422', $r['s'] === 422);
+    $r = req('POST', '/auth/google', ['credencial' => $jwt(['exp' => time() - 3600, 'iat' => time() - 7200] + $pessoaG)]);
+    confere('token vencido → 422', $r['s'] === 422);
+    $r = req('POST', '/auth/google', ['credencial' => $jwt(['iss' => 'https://falso.com'] + $pessoaG)]);
+    confere('emissor errado → 422', $r['s'] === 422);
+    $r = req('POST', '/auth/google', ['credencial' => 'nao.e.jwt']);
+    confere('lixo → 422', $r['s'] === 422);
+    $r = req('POST', '/auth/google', ['credencial' => $jwt(['sub' => '1000000000000000009', 'email' => 'sem@confirmar.com', 'email_verified' => false])]);
+    confere('e-mail não confirmado não cria conta', $r['s'] === 422);
+
+    $r = req('POST', '/auth/google', ['credencial' => $jwt($pessoaG)]);
+    $tG = $r['j']['token'] ?? '';
+    confere('cria conta com Google', $r['s'] === 200 && strlen($tG) === 64 && $r['j']['novo'] === true
+        && $r['j']['usuario']['email'] === 'teresa.g@exemplo.com' && $r['j']['usuario']['nome'] === 'Teresa Gomes'
+        && $r['j']['usuario']['google'] === true, $r['j']);
+    $idG = $r['j']['usuario']['id'] ?? '';
+    confere('cookie de sessão no Google', str_contains($r['h'], 'cuidados_sessao='));
+    $r = req('POST', '/auth/google', ['credencial' => $jwt($pessoaG)]);
+    confere('volta na mesma conta', $r['s'] === 200 && $r['j']['novo'] === false && $r['j']['usuario']['id'] === $idG, $r['j']);
+    $eu = req('GET', '/eu', null, $tG);
+    confere('perfil incompleto vai ao boas-vindas', $eu['s'] === 200 && $eu['j']['perfil_completo'] === false, $eu['j']);
+
+    // Já tinha conta por código no e-mail → mesma conta, agora vinculada
+    // (o envio de e-mail não roda nos testes: a conta nasce pelo celular e o e-mail vai direto no banco)
+    req('POST', '/auth/codigo', ['destino' => '(11) 98888-0777']);
+    $r = req('POST', '/auth/entrar', ['destino' => '(11) 98888-0777', 'codigo' => '123456']);
+    $idJ = $r['j']['usuario']['id'] ?? '';
+    $pdo->prepare('UPDATE usuarios SET email = ? WHERE id = ?')->execute(['joao.codigo@exemplo.com', $idJ]);
+    $r = req('POST', '/auth/google', ['credencial' => $jwt(['sub' => '1000000000000000002', 'email' => 'joao.codigo@exemplo.com', 'email_verified' => true, 'name' => 'Outro Nome'])]);
+    confere('vincula Google à conta do mesmo e-mail', $r['s'] === 200 && $r['j']['novo'] === false && $r['j']['usuario']['id'] === $idJ && $r['j']['usuario']['google'] === true, $r['j']);
+    $r = req('POST', '/auth/google', ['credencial' => $jwt(['sub' => '1000000000000000003', 'email' => 'joao.codigo@exemplo.com', 'email_verified' => true])]);
+    confere('outra conta Google com o mesmo e-mail → 409', $r['s'] === 409, $r['j']);
+
+    // Conta excluída: o vínculo com o Google some junto
+    $r = req('POST', '/eu/excluir', ['confirmar' => 'EXCLUIR'], $tG);
+    confere('exclui conta criada pelo Google', $r['s'] === 204, $r['j']);
+    $sub = $pdo->query("SELECT google_sub FROM usuarios WHERE id = '$idG'")->fetchColumn();
+    confere('vínculo Google apagado na exclusão', $sub === null);
+    $r = req('POST', '/auth/google', ['credencial' => $jwt($pessoaG)]);
+    confere('depois de excluir, Google abre conta nova', $r['s'] === 200 && $r['j']['novo'] === true && $r['j']['usuario']['id'] !== $idG, $r['j']);
+}
+
 echo "Sessão\n";
 $r = req('POST', '/auth/sair', [], $tCuid);
 confere('sair', $r['s'] === 204);

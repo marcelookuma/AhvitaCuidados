@@ -6,7 +6,7 @@ import { useSessao } from '../../sessao';
 import { ErroGeral, Ouvir, useAcao } from '../../componentes/ui';
 
 /**
- * Entrar sem senha: celular (código por WhatsApp ou SMS) ou e-mail.
+ * Entrar sem senha: celular (código por WhatsApp ou SMS), e-mail ou Google.
  * Duas telas curtas — "Entrar" e "Código" — como no wireframe de acesso.
  */
 export function Entrar() {
@@ -18,9 +18,12 @@ export function Entrar() {
   const [canalUsado, setCanalUsado] = useState('');
   const [codigo, setCodigo] = useState(['', '', '', '', '', '']);
   const [dicaTeste, setDicaTeste] = useState<string | null>(null);
+  const [googleId, setGoogleId] = useState<string | null>(null);
   const caixas = useRef<(HTMLInputElement | null)[]>([]);
 
-  useEffect(() => { api.canais().then((c) => setCanais(c.canais)).catch(() => setCanais(['email'])); }, []);
+  useEffect(() => {
+    api.canais().then((c) => { setCanais(c.canais); setGoogleId(c.google ?? null); }).catch(() => setCanais(['email']));
+  }, []);
   const temCelular = canais.some((c) => ['whatsapp', 'sms', 'log'].includes(c));
   useEffect(() => { if (canais.length && !temCelular) setTipo('email'); }, [canais, temCelular]);
 
@@ -32,10 +35,19 @@ export function Entrar() {
     setTimeout(() => caixas.current[0]?.focus(), 50);
   });
 
-  const entrar = useAcao(async (c: string) => {
-    await api.entrar(destino, c);
+  const depoisDeEntrar = async () => {
     const eu = await recarregar();
     navegar(eu && (!eu.perfil_completo || !eu.aceitou_termos) ? '/bem-vindo' : '/', true);
+  };
+
+  const entrar = useAcao(async (c: string) => {
+    await api.entrar(destino, c);
+    await depoisDeEntrar();
+  });
+
+  const entrarGoogle = useAcao(async (credencial: string) => {
+    await api.entrarGoogle(credencial);
+    await depoisDeEntrar();
   });
 
   function digitar(i: number, v: string) {
@@ -108,10 +120,67 @@ export function Entrar() {
           {pedir.enviando ? 'Enviando…' : tipo === 'celular' ? '💬 Receber código' : '✉️ Receber código'}
         </button>
       </form>
+      {googleId && (
+        <>
+          <div className="ou" aria-hidden="true"><span>ou</span></div>
+          <BotaoGoogle clientId={googleId} aoReceber={(c) => void entrarGoogle.executar(c)} />
+          {entrarGoogle.enviando && <p className="sutil" style={{ textAlign: 'center' }}>Entrando…</p>}
+          <ErroGeral erro={entrarGoogle.erro} />
+        </>
+      )}
       <p className="fraco">
         Ao entrar você concorda com os <a href="/termos.html" target="_blank" rel="noreferrer">Termos de uso</a> e a{' '}
         <a href="/privacidade.html" target="_blank" rel="noreferrer">Política de privacidade</a>. Dados de saúde são protegidos pela LGPD.
       </p>
     </main>
   );
+}
+
+/* ---------- Entrar com Google (Google Identity Services) ---------- */
+
+declare global {
+  interface Window { google?: any }
+}
+
+let scriptGoogle: Promise<void> | null = null;
+function carregarGoogle(): Promise<void> {
+  if (window.google?.accounts?.id) return Promise.resolve();
+  scriptGoogle ??= new Promise<void>((ok, falhou) => {
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.async = true;
+    s.onload = () => ok();
+    s.onerror = () => { scriptGoogle = null; falhou(new Error('google')); };
+    document.head.appendChild(s);
+  });
+  return scriptGoogle;
+}
+
+/** Botão oficial do Google (exigência da marca). Sem internet ou bloqueado: some sem atrapalhar. */
+function BotaoGoogle({ clientId, aoReceber }: { clientId: string; aoReceber: (credencial: string) => void }) {
+  const alvo = useRef<HTMLDivElement>(null);
+  const retorno = useRef(aoReceber);
+  retorno.current = aoReceber;
+  const [falhou, setFalhou] = useState(false);
+
+  useEffect(() => {
+    let ativo = true;
+    carregarGoogle().then(() => {
+      if (!ativo || !alvo.current) return;
+      const g = window.google.accounts.id;
+      g.initialize({
+        client_id: clientId,
+        callback: (r: { credential?: string }) => { if (r.credential) retorno.current(r.credential); },
+        auto_select: false,
+        cancel_on_tap_outside: true,
+        ux_mode: 'popup',
+      });
+      const largura = Math.min(400, Math.max(200, Math.round(alvo.current.getBoundingClientRect().width || 320)));
+      g.renderButton(alvo.current, { type: 'standard', theme: 'outline', size: 'large', text: 'continue_with', shape: 'pill', logo_alignment: 'center', width: largura, locale: 'pt-BR' });
+    }).catch(() => { if (ativo) setFalhou(true); });
+    return () => { ativo = false; };
+  }, [clientId]);
+
+  if (falhou) return null;
+  return <div ref={alvo} className="botao-google" aria-label="Continuar com o Google" />;
 }

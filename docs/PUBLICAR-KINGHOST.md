@@ -180,6 +180,23 @@ return [
 - **Nunca** use `'ambiente' => 'teste'` com pessoas reais: em teste o código de acesso aparece na tela.
 - A publicação automática **não sobrescreve nem apaga** este arquivo.
 
+## Etapa 6b — Entrar com Google (opcional)
+
+Sem esta etapa o app funciona igual, só sem o botão **Continuar com o Google**.
+
+1. Em <https://console.cloud.google.com> crie (ou escolha) um projeto, por exemplo **Ahvita Cuidados**.
+2. **Google Auth Platform → Branding** (tela de consentimento): nome do app, e-mail de suporte, logo, e os links `https://cuidados.ahvita.com/privacidade.html` e `/termos.html`. Em **Público**, escolha **Externo**. Os escopos usados são só `openid`, `email` e `profile`, que não exigem verificação do Google.
+3. Enquanto o app estiver em **Teste**, só entram os e-mails cadastrados em **Usuários de teste**. Para o público geral, clique em **Publicar app**.
+4. **Clientes → Criar cliente → Aplicativo da Web**. Em **Origens JavaScript autorizadas** coloque exatamente o endereço do app, sem barra no final: `https://cuidados.ahvita.com` (e `http://localhost:5173` se for testar no computador). **URIs de redirecionamento**: deixe em branco (o app usa a janela do Google, sem redirecionar).
+5. Copie o **ID do cliente** (termina em `.apps.googleusercontent.com`) e coloque no `configuracao.php`:
+   ```php
+   'google' => ['client_id' => '1234567890-abc123.apps.googleusercontent.com'],
+   ```
+   Não há segredo para guardar: esse ID é público. **Não** copie a "chave secreta do cliente" para o servidor — ela não é usada.
+6. Abra `https://cuidados.ahvita.com/api/index.php?r=/auth/canais`: deve aparecer `"google":"…apps.googleusercontent.com"`. Na tela **Entrar**, o botão aparece abaixo de "ou".
+
+O servidor baixa as chaves públicas do Google (`www.googleapis.com`) e guarda por algumas horas em `cuidados_privado/cache/`. Se a KingHost bloquear saída para a internet, o botão mostra "Não conseguimos falar com o Google agora" e o código por celular/e-mail continua funcionando.
+
 ## Etapa 7 — Tarefas a cada 5 minutos (não precisa de cron)
 
 O app tem tarefas periódicas: atualizar o banco depois de cada publicação, avisar quando um atendimento está sem confirmação e limpar códigos e sessões vencidos.

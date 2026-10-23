@@ -55,6 +55,13 @@ return [
         'verify_sid' => '',
     ],
 
+    // "Entrar com Google": ID do cliente OAuth (tipo "Aplicativo da Web") do Google Cloud.
+    // Em "Origens JavaScript autorizadas" cadastre o endereço do app (url_app).
+    // Vazio = o botão do Google não aparece. Não há segredo aqui: o ID é público.
+    'google' => [
+        'client_id' => '',        // ex.: '1234567890-abc123.apps.googleusercontent.com'
+    ],
+
     // Só se o app móvel/web rodar em outro endereço (ex.: desenvolvimento)
     'cors' => [
         'origens' => [],

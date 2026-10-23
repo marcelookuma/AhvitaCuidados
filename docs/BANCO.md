@@ -1,6 +1,6 @@
 # Banco de dados — MariaDB/MySQL
 
-Arquivo: `db/001_schema.sql` (importar no phpMyAdmin ou `php bin/instalar.php`). Compatível com MySQL 5.7+/8 e MariaDB 10.3+. Testado em MariaDB 10.11 com um usuário **sem** privilégio de gatilho (como na hospedagem compartilhada).
+Arquivos: `db/001_schema.sql` e as alterações seguintes `db/0NN_*.sql` (ex.: `002_google.sql`), aplicadas em ordem (importar no phpMyAdmin ou `php bin/instalar.php`). Compatível com MySQL 5.7+/8 e MariaDB 10.3+. Testado em MariaDB 10.11 com um usuário **sem** privilégio de gatilho (como na hospedagem compartilhada).
 
 ```mermaid
 erDiagram
@@ -26,7 +26,7 @@ erDiagram
 
 | Tabela | Para quê | Notas |
 |---|---|---|
-| `usuarios` | quem usa o app | CPF, telefone e e-mail únicos; exclusão = anonimização |
+| `usuarios` | quem usa o app | CPF, telefone, e-mail e `google_sub` (conta Google) únicos; exclusão = anonimização |
 | `otp_codigos` | código de acesso | só o HMAC do código; tentativas; IP |
 | `sessoes` | sessões | só SHA-256 do token |
 | `empresas`, `empresa_membros`, `empresa_cuidadores` | empresa, equipe administrativa e rede de cuidadores(as) | `modalidade` (mei/autonomo/clt) decide a regra de agenda |
