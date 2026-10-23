@@ -3,6 +3,7 @@ import { MODALIDADES, hora, isoLocal, periodo, reais, telefone, type ConviteCria
 import { api } from '../../servicos';
 import { busca, casar, navegar, useCaminho } from '../../rota';
 import { useSessao } from '../../sessao';
+import { BotaoSair } from '../../componentes/sair';
 import { useCarregar, useRepetir } from '../../hooks';
 import { Campo, Carregando, ErroGeral, Vazio, useAcao, useLanche } from '../../componentes/ui';
 import { Direta } from '../cuidador/Direta';
@@ -21,7 +22,7 @@ const ABAS = [
  */
 export function AppEmpresa() {
   const caminho = useCaminho();
-  const { eu, sair } = useSessao();
+  const { eu } = useSessao();
   const m = casar('/e/:id/:aba', caminho) ?? casar('/e/:id', caminho);
   const id = m?.id ?? '';
   const painel = useCarregar(() => api.painelEmpresa(id), [id]);
@@ -36,7 +37,7 @@ export function AppEmpresa() {
         <div className="marca"><img src="/icone.svg" alt="" /><b>{e.nome}</b></div>
         <span className="cresce" />
         {(eu?.papeis.cuidador || eu?.papeis.acompanha || (eu?.empresas.length ?? 0) > 1) && <button className="botao secundario pequeno" onClick={() => navegar('/perfil')}>Trocar perfil</button>}
-        <button className="botao fantasma pequeno" onClick={() => void sair()}>Sair</button>
+        <BotaoSair variante="pequeno" rotulo="Sair" />
       </header>
       <div className="painel-corpo">
         <nav className="lateral" aria-label="Seções">

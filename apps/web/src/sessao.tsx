@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { ErroApi, type Eu } from '@cuidados/core';
-import { api } from './servicos';
+import { api, fila } from './servicos';
 import { apagarTudo } from './armazenamento';
 import { navegar } from './rota';
 
@@ -50,8 +50,11 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
 
   const sair = useCallback(async () => {
     try { await api.sair(); } catch { /* sem internet: apaga local mesmo assim */ }
+    // Dados de saúde não ficam no aparelho depois de sair (LGPD): sessão, cópias e fila.
     localStorage.clear();
+    sessionStorage.clear();
     await apagarTudo();
+    await fila.limpar();
     setEu(null);
     navegar('/entrar', true);
   }, []);

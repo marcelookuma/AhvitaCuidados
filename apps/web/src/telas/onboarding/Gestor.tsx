@@ -4,6 +4,7 @@ import { api } from '../../servicos';
 import { navegar, PERFIL_ATIVO } from '../../rota';
 import { useSessao } from '../../sessao';
 import { Campo, ErroGeral, useAcao } from '../../componentes/ui';
+import { BotaoSair } from '../../componentes/sair';
 
 /**
  * Onboarding do(a) Gestor(a): cadastro da pessoa cuidada.
@@ -208,6 +209,7 @@ export function OnboardingGestor() {
           <button className="botao largo" onClick={terminar}>Abrir o painel</button>
         </div>
       )}
+      <div className="acesso-rodape"><BotaoSair /></div>
     </main>
   );
 }

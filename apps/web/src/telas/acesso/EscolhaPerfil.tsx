@@ -1,10 +1,11 @@
 import { navegar } from '../../rota';
 import { useSessao } from '../../sessao';
+import { BotaoSair } from '../../componentes/sair';
 import { PERFIL_ATIVO } from '../../rota';
 
 /** Quem tem mais de um papel escolhe como entrar (fica lembrado no aparelho). */
 export function EscolhaPerfil() {
-  const { eu, sair } = useSessao();
+  const { eu } = useSessao();
   if (!eu) return null;
   const ir = (c: string) => { localStorage.setItem(PERFIL_ATIVO, c); navegar(c, true); };
   return (
@@ -30,7 +31,7 @@ export function EscolhaPerfil() {
           <span className="e">➕</span><span><b>Outro papel</b><small>Cadastrar pessoa cuidada, empresa ou usar um convite</small></span>
         </button>
       </div>
-      <button className="botao fantasma" onClick={() => void sair()}>Sair da conta</button>
+      <div className="acesso-rodape"><BotaoSair /></div>
     </main>
   );
 }

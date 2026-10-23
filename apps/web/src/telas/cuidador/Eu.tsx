@@ -5,10 +5,11 @@ import { Interruptor, Ouvir, Topo, useLanche } from '../../componentes/ui';
 import { telefone } from '@cuidados/core';
 import { falar } from '../../voz';
 import { AbasCuidador } from './AppCuidador';
+import { BotaoSair } from '../../componentes/sair';
 
 /** Eu: tamanho da letra, ler em voz alta, meus registros, ajuda e sair. */
 export function Eu() {
-  const { eu, recarregar, sair } = useSessao();
+  const { eu, recarregar } = useSessao();
   const lanche = useLanche();
   if (!eu) return null;
   const pref = eu.usuario.preferencias ?? {};
@@ -44,7 +45,7 @@ export function Eu() {
           <a className="botao secundario largo" href="https://wa.me/5511900000000?text=Preciso%20de%20ajuda%20com%20o%20Ahvita%20Cuidados" target="_blank" rel="noreferrer">💬 Falar com o suporte</a>
         </div>
         {(eu.papeis.acompanha || eu.papeis.empresa) && <button className="botao secundario largo" onClick={() => navegar('/perfil')}>Trocar de perfil</button>}
-        <button className="botao fantasma largo" onClick={() => void sair()}>Sair da conta</button>
+        <BotaoSair />
       </div>
       <AbasCuidador atual="eu" />
     </div>
