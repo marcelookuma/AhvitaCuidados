@@ -8,7 +8,7 @@ import { useCarregar, useRepetir } from '../../hooks';
 import { Campo, Carregando, ErroGeral, Vazio, useAcao, useLanche } from '../../componentes/ui';
 import { Direta } from '../cuidador/Direta';
 import { ConvitesParaVoce } from '../../componentes/convites';
-import { LinhaDoTempo } from '../acompanhamento/LinhaDoTempo';
+import { ClienteEmpresa } from './Cliente';
 import { EscolherPermissoesEmpresa, nomes } from '../acompanhamento/LigarEmpresa';
 
 const ABAS = [
@@ -323,18 +323,7 @@ function Clientes({ id, aberto }: { id: string; aberto?: string }) {
   const cliente = aberto ? r.dados.clientes.find((c) => c.id === aberto) : undefined;
   if (aberto) {
     if (!cliente) return <><button className="botao fantasma pequeno" onClick={() => navegar(`/e/${id}/clientes`)}>← Clientes</button><Vazio e="🔒">Este cliente não está mais ligado à empresa.</Vazio></>;
-    const veLinha = cliente.permissoes.includes('ver_registros');
-    return (
-      <>
-        <div className="linha-h" style={{ flexWrap: 'wrap' }}>
-          <button className="botao fantasma pequeno" onClick={() => navegar(`/e/${id}/clientes`)}>← Clientes</button>
-          <span className="cresce" />
-          <span className="sutil">Gestor(a): {cliente.gestor?.nome ?? '—'}</span>
-        </div>
-        <p className="aviso-empresa">A empresa vê: <b>{nomes(cliente.permissoes)}</b>. Quem decide é o(a) gestor(a). Os registros são do cuidado de {cliente.apelido}: não servem para controlar horário ou tarefas de cuidadores(as) MEI ou autônomos(as).</p>
-        {veLinha ? <LinhaDoTempo pessoa={cliente} /> : <Vazio e="🔒">O(a) gestor(a) não liberou a linha do tempo de {cliente.apelido}. Ele(a) pode liberar em “Quem cuida”.</Vazio>}
-      </>
-    );
+    return <ClienteEmpresa empresaId={id} pessoaId={cliente.id} gestor={cliente.gestor?.nome} />;
   }
   const recebidos = r.dados.pedidos?.recebidos ?? [];
   const enviados = r.dados.pedidos?.enviados ?? [];
@@ -402,7 +391,7 @@ function Clientes({ id, aberto }: { id: string; aberto?: string }) {
                 <td>{c.gestor?.nome}<br /><span className="sutil">{telefone(c.gestor?.telefone)}</span></td>
                 <td>{c.cuidadores.map((x) => x.nome).join(', ') || '—'}</td>
                 <td className="sutil">{nomes(c.permissoes)}</td>
-                <td>{c.permissoes.includes('ver_registros') && <button className="botao fantasma pequeno" onClick={() => navegar(`/e/${id}/clientes/${c.id}`)}>🕑 Linha do tempo</button>}</td>
+                <td><button className="botao fantasma pequeno" onClick={() => navegar(`/e/${id}/clientes/${c.id}`)}>Abrir</button></td>
               </tr>
             ))}
             {pendentes.map((p) => (

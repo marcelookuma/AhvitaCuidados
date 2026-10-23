@@ -433,6 +433,8 @@ html[data-fonte="3"] .modo-painel { --base: 20px; }
   .principal { padding: .9em .8em 3em; }
   .principal h1 { font-size: 1.3em; }
   .permissoes { grid-template-columns: 1fr; }
+  .abas { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; }
+  .abas button { white-space: nowrap; flex: none; }
   .indicadores { grid-template-columns: repeat(2, 1fr); }
   .alerta-linha .botao { flex: 1 1 auto; }
 }
