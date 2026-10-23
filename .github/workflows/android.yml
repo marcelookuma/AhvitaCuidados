@@ -43,7 +43,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22   # o Capacitor 8 exige Node 22 ou mais novo
           cache: npm
       - uses: actions/setup-java@v5
         with:

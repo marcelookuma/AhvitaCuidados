@@ -118,7 +118,7 @@ Sem esse arquivo, o link abre no navegador (a versão web), que também funciona
 ```bash
 npm install
 npm run build:android            # confere vocabulário + gera dist-android + sincroniza com o Android
-npm run android:abrir -w apps/web  # abre no Android Studio (precisa do Android SDK e JDK 21)
+npm run android:abrir -w apps/web  # abre no Android Studio (precisa de Node 22+, Android SDK e JDK 21)
 ```
 Para testar no emulador contra a API local, gere com `VITE_URL_APP=http://10.0.2.2:8099` e acrescente `http://localhost` em `cors.origens_app` só no ambiente de teste.
 
