@@ -36,6 +36,7 @@ npm run verificar:termos   # falha se aparecer "trabalhando", "jornada", "patrã
 php api/tests/fluxo.php http://127.0.0.1:8099   # 108 verificações de ponta a ponta (banco vazio)
 php api/tests/admin.php http://127.0.0.1:8099   # 68 verificações do painel /admin (depois do fluxo)
 php api/tests/rede.php http://127.0.0.1:8099    # 45 verificações dos pedidos de rede empresa ↔ cuidador(a)
+php api/tests/conta.php http://127.0.0.1:8099   # 19 verificações de Meus dados (editar o próprio cadastro)
 php api/bin/auditoria.php  # confere a trilha de auditoria encadeada
 npm run pacote:kinghost    # gera pacote-kinghost/ (www/ + privado/)
 ```

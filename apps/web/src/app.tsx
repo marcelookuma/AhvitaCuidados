@@ -12,6 +12,7 @@ import { OnboardingEmpresa } from './telas/onboarding/Empresa';
 import { AppCuidador } from './telas/cuidador/AppCuidador';
 import { AppAcompanhamento } from './telas/acompanhamento/AppAcompanhamento';
 import { AppEmpresa } from './telas/empresa/AppEmpresa';
+import { MeusDados } from './telas/conta/MeusDados';
 
 const CHAVE_CONVITE = 'cuidados:convite';
 import { PERFIL_ATIVO } from './rota';
@@ -52,6 +53,9 @@ export function App() {
     const codigo = convite?.codigo ?? pendente!;
     return <Convite codigo={codigo} aoTerminar={() => sessionStorage.removeItem(CHAVE_CONVITE)} />;
   }
+
+  // ---------- Meus dados (o mesmo para todos os perfis)
+  if (caminho === '/conta') return <MeusDados />;
 
   // ---------- Apps por perfil
   if (caminho === '/c' || caminho.startsWith('/c/')) return <AppCuidador />;

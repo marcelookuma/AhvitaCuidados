@@ -413,3 +413,12 @@ html[data-fonte="3"] .modo-painel { --base: 20px; }
 .conversa-linha[disabled] { opacity: .55; cursor: default; }
 .pedido-empresa { border-left: 4px solid var(--verde); }
 .lista-respostas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .35em; }
+
+/* ---------- Meus dados (todos os perfis) ---------- */
+.meus-dados { max-width: 40em; }
+.titulo-cartao { font-size: 1.05em; margin: 0; }
+.cartao-botao { width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; border: 1px solid var(--linha); }
+.cartao-botao:active { background: var(--verde-claro); }
+.contato .confirma { padding: .7em .8em; background: var(--alerta-claro); border-radius: var(--raio-p); }
+.codigo-unico { font-size: 1.8em; text-align: center; letter-spacing: .3em; font-weight: 800; padding: .35em; border-radius: 12px; border: 2px solid var(--linha); max-width: 9em; }
+.conta-principal { max-width: 46em; }

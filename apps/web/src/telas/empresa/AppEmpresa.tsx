@@ -36,6 +36,7 @@ export function AppEmpresa() {
       <header className="painel-topo">
         <div className="marca"><img src="/icone.svg" alt="" /><b>{e.nome}</b></div>
         <span className="cresce" />
+        <button className="botao secundario pequeno" onClick={() => navegar('/conta')}>👤 Meus dados</button>
         {(eu?.papeis.cuidador || eu?.papeis.acompanha || (eu?.empresas.length ?? 0) > 1) && <button className="botao secundario pequeno" onClick={() => navegar('/perfil')}>Trocar perfil</button>}
         <BotaoSair variante="pequeno" rotulo="Sair" />
       </header>
