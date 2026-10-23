@@ -1,11 +1,20 @@
 import { criarApi, criarFila } from '@cuidados/core';
 import { armazenamentoFila } from './armazenamento';
+import { apagarToken, baseApi, guardarToken, tokenSessao } from './plataforma';
 
-/** Na web a sessão vai no cookie httpOnly; o app móvel passaria `token`. */
+/**
+ * Web: a sessão vai no cookie httpOnly. App Android: token Bearer guardado no
+ * cofre do aparelho (ver plataforma.ts). As telas não sabem a diferença.
+ */
 export const api = criarApi({
-  // Sem depender de reescrita de URL (a KingHost serve por nginx, que ignora .htaccess)
-  base: import.meta.env.VITE_API_BASE ?? '/api/index.php?r=',
-  aoPerderSessao: () => window.dispatchEvent(new Event('cuidados:sessao-perdida')),
+  // Web: sem depender de reescrita de URL (a KingHost serve por nginx, que ignora .htaccess)
+  base: baseApi(),
+  token: tokenSessao,
+  aoReceberToken: (t) => void guardarToken(t),
+  aoPerderSessao: () => {
+    void apagarToken();
+    window.dispatchEvent(new Event('cuidados:sessao-perdida'));
+  },
 });
 
 export const fila = criarFila(api, armazenamentoFila);

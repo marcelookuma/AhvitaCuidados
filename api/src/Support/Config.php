@@ -27,7 +27,10 @@ final class Config
         'midias.max_bytes' => 8_000_000,
         'sessao.dias' => 30,
         'sessao.cookie' => 'cuidados_sessao',
-        'cors.origens' => [],                // ex.: ['http://localhost:5173']
+        'cors.origens' => [],                // ex.: ['http://localhost:5173'] (com cookie)
+        'cors.origens_app' => ['https://localhost'], // app Android (Capacitor): só Bearer, sem cookie
+        'push.fcm_credenciais' => '',        // JSON da conta de serviço do Firebase (vazio = sem push)
+        'push.arquivo_teste' => '',          // só em ambiente teste: grava os avisos num arquivo
         'codigo.canais' => ['email'],        // whatsapp, sms, email, log
         'codigo.teste_fixo' => null,         // só em ambiente teste
         'email.remetente' => 'Ahvita Cuidados <nao-responda@ahvita.com>',

@@ -1,12 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../servicos';
+import { nativo } from '../plataforma';
 import { IcPausar, IcTocar } from './icones';
 
 /**
- * Foto protegida: o navegador manda o cookie de sessão; a API confere o
- * acesso antes de entregar. Fotos pendentes (sem internet) vêm de um Blob local.
+ * Endereço para mostrar uma foto ou tocar um áudio protegido.
+ * Web: o navegador manda o cookie de sessão; a API confere o acesso antes de entregar.
+ * App Android: <img>/<audio> não mandam o token, então baixamos com o token e
+ * guardamos só na memória (some ao fechar o app; nada vai para a galeria).
+ * Pendentes (sem internet) vêm de um Blob local.
  */
-export function Foto({ midiaId, blob, alt }: { midiaId?: string | null; blob?: Blob; alt: string }) {
+const naMemoria = new Map<string, Promise<string>>();
+
+function useUrlMidia(midiaId?: string | null, blob?: Blob): string | null {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
     if (blob) {
@@ -14,8 +20,29 @@ export function Foto({ midiaId, blob, alt }: { midiaId?: string | null; blob?: B
       setUrl(u);
       return () => URL.revokeObjectURL(u);
     }
-    setUrl(midiaId ? api.urlMidia(midiaId) : null);
+    if (!midiaId) { setUrl(null); return; }
+    if (!nativo) { setUrl(api.urlMidia(midiaId)); return; }
+    let vivo = true;
+    let p = naMemoria.get(midiaId);
+    if (!p) {
+      p = api.baixarMidia(midiaId).then((b) => URL.createObjectURL(b));
+      p.catch(() => naMemoria.delete(midiaId)); // sem internet: tenta de novo depois
+      naMemoria.set(midiaId, p);
+    }
+    p.then((u) => vivo && setUrl(u)).catch(() => vivo && setUrl(null));
+    return () => { vivo = false; };
   }, [midiaId, blob]);
+  return url;
+}
+
+/** Ao sair da conta: solta as fotos e áudios guardados na memória. */
+export function esquecerMidias() {
+  naMemoria.forEach((p) => void p.then((u) => URL.revokeObjectURL(u)).catch(() => undefined));
+  naMemoria.clear();
+}
+
+export function Foto({ midiaId, blob, alt }: { midiaId?: string | null; blob?: Blob; alt: string }) {
+  const url = useUrlMidia(midiaId, blob);
   if (!url) return null;
   return <img className="foto" src={url} alt={alt} loading="lazy" />;
 }
@@ -24,15 +51,7 @@ export function Audio({ midiaId, blob }: { midiaId?: string | null; blob?: Blob 
   const ref = useRef<HTMLAudioElement>(null);
   const [tocando, setTocando] = useState(false);
   const [dur, setDur] = useState('');
-  const [src, setSrc] = useState<string>('');
-  useEffect(() => {
-    if (blob) {
-      const u = URL.createObjectURL(blob);
-      setSrc(u);
-      return () => URL.revokeObjectURL(u);
-    }
-    setSrc(midiaId ? api.urlMidia(midiaId) : '');
-  }, [midiaId, blob]);
+  const src = useUrlMidia(midiaId, blob) ?? '';
   return (
     <div className="audio">
       <button className="tocar" aria-label={tocando ? 'Pausar áudio' : 'Ouvir áudio'} onClick={() => {

@@ -62,6 +62,8 @@ export function MeusDados() {
         <div className="separador" />
         <Google u={u} podeTirar={formasDeEntrar > 1} />
       </div>
+
+      <ExcluirConta grande={grande} />
     </div>
   );
 
@@ -220,6 +222,39 @@ function Google({ u, podeTirar }: { u: Usuario; podeTirar: boolean }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Excluir a própria conta (LGPD art. 18; a Play Store exige o caminho dentro do app).
+ * A API recusa se a pessoa for o(a) único(a) gestor(a) de alguém e explica o que fazer.
+ */
+function ExcluirConta({ grande }: { grande: boolean }) {
+  const { sair } = useSessao();
+  const [aberto, setAberto] = useState(false);
+  const [confirmar, setConfirmar] = useState('');
+  const excluir = useAcao(async () => {
+    await api.excluirConta();
+    await sair(); // apaga sessão, fila e cópias do aparelho
+  });
+  return (
+    <div className="cartao pilha">
+      <h2 className="titulo-cartao">Excluir minha conta</h2>
+      {!aberto && <button className={`botao fantasma ${grande ? 'largo' : ''}`} onClick={() => setAberto(true)}>Excluir minha conta</button>}
+      {aberto && <>
+        <p style={{ margin: 0 }}>Apaga seu nome, CPF, celular e e-mail e tira você de todos os cuidados. O que você registrou continua no histórico da pessoa cuidada, sem seus dados. Não dá para desfazer.</p>
+        <Campo rotulo="Para confirmar, digite: EXCLUIR">
+          <input value={confirmar} onChange={(e) => setConfirmar(e.target.value.toUpperCase())} autoCapitalize="characters" />
+        </Campo>
+        <ErroGeral erro={excluir.erro} />
+        <div className="linha-h">
+          <button className="botao secundario" onClick={() => { setAberto(false); setConfirmar(''); }}>Cancelar</button>
+          <button className="botao perigo" disabled={confirmar !== 'EXCLUIR' || excluir.enviando} onClick={() => void excluir.executar()}>
+            {excluir.enviando ? 'Excluindo…' : 'Excluir'}
+          </button>
+        </div>
+      </>}
     </div>
   );
 }

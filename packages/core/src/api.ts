@@ -25,6 +25,7 @@ export class ErroApi extends Error {
 export interface OpcoesApi {
   base: string;                         // ex.: https://cuidados.ahvita.com/api/index.php?r=  (ou .../api/v1 com reescrita)
   token?: () => string | null;          // app móvel: Bearer
+  aoReceberToken?: (token: string) => void; // app móvel: guarda no cofre do aparelho
   aoPerderSessao?: () => void;
 }
 
@@ -42,7 +43,8 @@ export function criarApi(op: OpcoesApi) {
       resp = await fetch(url(caminho), {
         method: metodo,
         headers: cab,
-        credentials: 'include',
+        // Com Bearer (app) não vai cookie: a API libera a origem do app sem credenciais.
+        credentials: tk ? 'omit' : 'include',
         body: form ?? (corpo !== undefined ? JSON.stringify(corpo) : undefined),
       });
     } catch {
@@ -62,6 +64,30 @@ export function criarApi(op: OpcoesApi) {
     return dados as T;
   }
 
+  /** Arquivo protegido (foto, áudio, cópia dos dados) com a sessão: cookie na web, Bearer no app. */
+  async function baixar(caminho: string): Promise<Blob> {
+    const cab: Record<string, string> = {};
+    const tk = op.token?.();
+    if (tk) cab.Authorization = `Bearer ${tk}`;
+    let resp: Response;
+    try {
+      resp = await fetch(url(caminho), { headers: cab, credentials: tk ? 'omit' : 'include' });
+    } catch {
+      throw new ErroApi(0, 'sem_conexao', 'Sem internet. Tente de novo quando a internet voltar.');
+    }
+    if (!resp.ok) {
+      if (resp.status === 401) op.aoPerderSessao?.();
+      throw new ErroApi(resp.status, 'erro', 'Não deu para abrir o arquivo. Tente de novo.');
+    }
+    return resp.blob();
+  }
+
+  async function comToken<T extends { token: string }>(p: Promise<T>): Promise<T> {
+    const r = await p;
+    if (r?.token) op.aoReceberToken?.(r.token);
+    return r;
+  }
+
   const get = <T>(c: string) => chamar<T>('GET', c);
   const post = <T>(c: string, b: unknown = {}) => chamar<T>('POST', c, b);
   const patch = <T>(c: string, b: unknown) => chamar<T>('PATCH', c, b);
@@ -77,8 +103,8 @@ export function criarApi(op: OpcoesApi) {
     // Acesso
     canais: () => get<{ canais: string[]; google?: string | null }>('/auth/canais'),
     pedirCodigo: (destino: string, canal?: string) => post<{ canal: string; expira_em: string; codigo_teste?: string }>('/auth/codigo', { destino, canal }),
-    entrar: (destino: string, codigo: string) => post<{ token: string; usuario: Usuario; novo: boolean }>('/auth/entrar', { destino, codigo }),
-    entrarGoogle: (credencial: string) => post<{ token: string; usuario: Usuario; novo: boolean }>('/auth/google', { credencial }),
+    entrar: (destino: string, codigo: string) => comToken(post<{ token: string; usuario: Usuario; novo: boolean }>('/auth/entrar', { destino, codigo })),
+    entrarGoogle: (credencial: string) => comToken(post<{ token: string; usuario: Usuario; novo: boolean }>('/auth/google', { credencial })),
     sair: () => post<void>('/auth/sair'),
 
     // Eu
@@ -91,7 +117,8 @@ export function criarApi(op: OpcoesApi) {
     aceitarTermos: () => post<void>('/eu/termos'),
     inicio: () => get<{ conversas: ConversaResumo[]; propostas_abertas: number; pedidos_rede: number }>('/eu/inicio'),
     excluirConta: () => post<void>('/eu/excluir', { confirmar: 'EXCLUIR' }),
-    urlExportarEu: () => op.base + '/eu/exportar',
+    urlExportarEu: () => url('/eu/exportar'),
+    exportarEu: () => baixar('/eu/exportar'),
 
     // Pessoas
     pessoas: () => get<{ pessoas: Pessoa[] }>('/pessoas'),
@@ -102,7 +129,8 @@ export function criarApi(op: OpcoesApi) {
     resolverAlerta: (id: string) => post<void>(`/alertas/${id}/resolver`),
     vinculos: (id: string) => get<{ vinculos: Vinculo[]; convites_pendentes: any[]; empresa: { id: string; nome: string; permissoes: string[] } | null }>(`/pessoas/${id}/vinculos`),
     desvincularEmpresa: (id: string) => post<void>(`/pessoas/${id}/empresa/desvincular`),
-    urlExportarPessoa: (id: string) => `${op.base}/pessoas/${id}/exportar`,
+    urlExportarPessoa: (id: string) => url(`/pessoas/${id}/exportar`),
+    exportarPessoa: (id: string) => baixar(`/pessoas/${id}/exportar`),
     excluirPessoa: (id: string, confirmar: string) => post<void>(`/pessoas/${id}/excluir`, { confirmar }),
 
     // Convites e vínculos
@@ -186,6 +214,11 @@ export function criarApi(op: OpcoesApi) {
       return chamar<{ id: string; tipo: 'foto' | 'audio' }>('POST', '/midias', undefined, f);
     },
     urlMidia: (id: string) => url(`/midias/${id}`),
+    baixarMidia: (id: string) => baixar(`/midias/${id}`),
+
+    // Aparelhos (app Android/iOS): avisos no celular (push)
+    registrarDispositivo: (token: string, plataforma: 'android' | 'ios') => post<void>('/dispositivos', { token, plataforma }),
+    removerDispositivo: (token: string) => post<void>('/dispositivos/remover', { token }),
   };
 }
 

@@ -18,20 +18,25 @@ use Cuidados\Modulos\Avisos;
 final class Tarefas
 {
     private const INTERVALO = 300;
+    /** Avisos no celular saem com mais pressa que as demais tarefas. */
+    private const INTERVALO_PUSH = 60;
 
-    /** @return array{migracoes: list<string>, alertas: int} */
+    /** @return array{migracoes: list<string>, alertas: int, avisos_celular: int} */
     public static function executar(): array
     {
         $migr = Migracoes::aplicar(Migracoes::pasta());
         $n = Avisos::verificarCobertura();
-        // Outbox: aqui entram push (FCM/APNs/Web Push) e WhatsApp quando forem ligados.
+        // Outbox: avisos no celular (push) do app Android/iOS; WhatsApp entra aqui depois.
+        $push = Push::processar();
         Bd::exec('UPDATE eventos_saida SET processado_em = :a WHERE processado_em IS NULL AND criado_em < :lim',
             ['a' => Tempo::agoraSql(), 'lim' => Tempo::agora()->modify('-7 days')->format('Y-m-d H:i:s')]);
+        Bd::exec('DELETE FROM eventos_saida WHERE processado_em IS NOT NULL AND processado_em < :lim',
+            ['lim' => Tempo::agora()->modify('-30 days')->format('Y-m-d H:i:s')]);
         Bd::exec('DELETE FROM otp_codigos WHERE criado_em < :lim', ['lim' => Tempo::agora()->modify('-2 days')->format('Y-m-d H:i:s')]);
         Bd::exec('DELETE FROM sessoes WHERE expira_em < :lim', ['lim' => Tempo::agora()->modify('-30 days')->format('Y-m-d H:i:s')]);
         LogAcesso::limpar();
         self::marcar();
-        return ['migracoes' => $migr, 'alertas' => $n];
+        return ['migracoes' => $migr, 'alertas' => $n, 'avisos_celular' => $push['enviados']];
     }
 
     /** Roda se já passou o intervalo. Nunca derruba a requisição. */
@@ -39,6 +44,7 @@ final class Tarefas
     {
         if (!Config::configurado()) return; // ainda sem configuracao.php
         if (!filter_var(Config::get('tarefas.automaticas', true), FILTER_VALIDATE_BOOL)) return;
+        self::pushSeVencido();
         $marca = self::arquivoMarca();
         $ultima = is_file($marca) ? (int)@filemtime($marca) : 0;
         if ($ultima > time() - self::INTERVALO) return;
@@ -52,6 +58,27 @@ final class Tarefas
             self::executar();
         } catch (\Throwable $e) {
             error_log('[cuidados] tarefas: ' . $e->getMessage());
+        } finally {
+            flock($trava, LOCK_UN);
+            fclose($trava);
+        }
+    }
+
+    /** Push a cada minuto (só quando o Firebase estiver configurado). Nunca derruba a requisição. */
+    private static function pushSeVencido(): void
+    {
+        if (!Push::configurado()) return;
+        $marca = self::arquivoPrivado('.push');
+        $ultima = is_file($marca) ? (int)@filemtime($marca) : 0;
+        if ($ultima > time() - self::INTERVALO_PUSH) return;
+        $trava = @fopen($marca . '.trava', 'c');
+        if ($trava === false) return;
+        try {
+            if (!flock($trava, LOCK_EX | LOCK_NB)) return;
+            @touch($marca);
+            Push::processar();
+        } catch (\Throwable $e) {
+            error_log('[cuidados] push: ' . $e->getMessage());
         } finally {
             flock($trava, LOCK_UN);
             fclose($trava);
@@ -72,10 +99,16 @@ final class Tarefas
 
     private static function arquivoMarca(): string
     {
+        return self::arquivoPrivado('.tarefas');
+    }
+
+    /** Arquivo de controle na pasta privada de mídias (fora da pasta pública). */
+    public static function arquivoPrivado(string $nome): string
+    {
         $pasta = rtrim((string)Config::get('midias.pasta'), '/');
         if (!is_dir($pasta)) @mkdir($pasta, 0770, true);
-        if (is_dir($pasta) && is_writable($pasta)) return $pasta . '/.tarefas';
+        if (is_dir($pasta) && is_writable($pasta)) return $pasta . '/' . $nome;
         // Sem escrita na pasta de mídias: usa a pasta temporária (sem isso, rodaria a cada requisição)
-        return rtrim(sys_get_temp_dir(), '/') . '/cuidados-tarefas-' . substr(hash('sha256', CUIDADOS_RAIZ), 0, 12);
+        return rtrim(sys_get_temp_dir(), '/') . '/cuidados' . $nome . '-' . substr(hash('sha256', CUIDADOS_RAIZ), 0, 12);
     }
 }

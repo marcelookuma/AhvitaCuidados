@@ -1,3 +1,4 @@
+import { nativo } from '../../plataforma';
 import { useEffect, useRef, useState } from 'react';
 import { telefone as fmtTel } from '@cuidados/core';
 import { api } from '../../servicos';
@@ -22,7 +23,11 @@ export function Entrar() {
   const caixas = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    api.canais().then((c) => { setCanais(c.canais); setGoogleId(c.google ?? null); }).catch(() => setCanais(['email']));
+    api.canais().then((c) => {
+      setCanais(c.canais);
+      // App Android: o botão do Google (Identity Services) não funciona dentro de app; entra por código.
+      setGoogleId(nativo ? null : c.google ?? null);
+    }).catch(() => setCanais(['email']));
   }, []);
   const temCelular = canais.some((c) => ['whatsapp', 'sms', 'log'].includes(c));
   useEffect(() => { if (canais.length && !temCelular) setTipo('email'); }, [canais, temCelular]);

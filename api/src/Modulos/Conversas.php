@@ -35,7 +35,7 @@ final class Conversas
     {
         $id ??= Ulid::novo();
         $agora = Tempo::agoraSql();
-        Bd::inserir('mensagens', [
+        $nova = Bd::inserir('mensagens', [
             'id' => $id,
             'conversa_id' => $conversaId,
             'autor_id' => $autorId,
@@ -44,12 +44,18 @@ final class Conversas
             'midia_id' => $midiaId,
             'criado_em' => $criadoEm ?? $agora,
             'recebido_em' => $agora,
-        ], true);
+        ], true) > 0;
         $m = Bd::um('SELECT * FROM mensagens WHERE id = :id AND conversa_id = :c', ['id' => $id, 'c' => $conversaId]);
         if ($m === null) {
             throw \Cuidados\Support\ErroHttp::conflito('id_em_uso', 'Envio duplicado. Atualize a conversa.');
         }
-        if ($autorId !== null) self::marcarVisto($conversaId, $autorId);
+        if ($autorId !== null) {
+            self::marcarVisto($conversaId, $autorId);
+            // Aviso no celular para os outros participantes (só na primeira vez; reenvio do aparelho não repete).
+            if ($nova && $tipo !== 'sistema') {
+                Avisos::evento('mensagem', null, ['conversa_id' => $conversaId, 'autor_id' => $autorId]);
+            }
+        }
         return $m;
     }
 

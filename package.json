@@ -2,14 +2,18 @@
   "name": "ahvita-cuidados",
   "version": "1.0.0",
   "private": true,
-  "description": "Ahvita Cuidados — coordenação de cuidados (web + API PHP/MySQL; app Android/iOS previsto)",
-  "workspaces": ["packages/*", "apps/web"],
+  "description": "Ahvita Cuidados — coordenação de cuidados (web + app Android com as mesmas telas + API PHP/MySQL)",
+  "workspaces": [
+    "packages/*",
+    "apps/web"
+  ],
   "scripts": {
     "dev": "npm run dev -w apps/web",
     "build": "npm run verificar:termos && npm run build -w apps/web",
     "verificar:termos": "node scripts/verificar-termos.mjs",
     "tipos": "tsc -p apps/web --noEmit",
     "teste:api": "php api/tests/fluxo.php",
-    "pacote:kinghost": "npm run build && node scripts/empacotar-kinghost.mjs"
+    "pacote:kinghost": "npm run build && node scripts/empacotar-kinghost.mjs",
+    "build:android": "npm run verificar:termos && npm run build:android -w apps/web"
   }
 }

@@ -2,7 +2,7 @@
 
 Base: `https://cuidados.ahvita.com/api/index.php?r=` (funciona em qualquer servidor, inclusive nginx sem reescrita de URL; o "?" da rota vira "&", ex.: `?r=/conversas&desde=…`) ou `https://cuidados.ahvita.com/api/v1` onde houver Apache com .htaccess · JSON UTF-8 · datas ISO 8601 em UTC (`2026-10-21T10:32:00Z`).
 
-**Autenticação**: web usa o cookie `cuidados_sessao` (httpOnly) e **toda escrita precisa do cabeçalho `X-Cuidados: 1`**; app Android/iOS usa `Authorization: Bearer <token>` (recebido em `/auth/entrar`).
+**Autenticação**: web usa o cookie `cuidados_sessao` (httpOnly) e **toda escrita precisa do cabeçalho `X-Cuidados: 1`**; app Android usa `Authorization: Bearer <token>` (recebido em `/auth/entrar`), a partir da origem `https://localhost`, liberada **sem cookie** (`cors.origens_app`); ver `docs/ANDROID.md`.
 
 **Erros** (mensagens curtas, prontas para a tela):
 ```json
@@ -150,6 +150,14 @@ Só o aceite do outro lado coloca o(a) cuidador(a) na rede (`empresa_cuidadores`
 |---|---|---|---|
 | POST | `/midias` | multipart `arquivo` + `pessoa_id` ou `conversa_id` | foto (jpeg/png/webp/heic) ou áudio (webm/ogg/m4a/mp3), até 8 MB |
 | GET | `/midias/{id}` | — | só para quem tem acesso; foto exige `fotos` |
+
+## Aparelhos (app Android: avisos no celular)
+| Método | Caminho | Corpo | Observação |
+|---|---|---|---|
+| POST | `/dispositivos` | `{token, plataforma:"android"\|"ios"}` | token do Firebase; idempotente; fica preso à **sessão atual** (sair desliga os avisos) |
+| POST | `/dispositivos/remover` | `{token}` | ao sair da conta ou desligar os avisos |
+
+Os avisos saem da fila `eventos_saida` (mensagem, proposta, pedido_rede, pedido_cliente, alerta) a cada minuto, com texto genérico (sem nome nem dado de saúde). Cuidador(a): silêncio das 21h às 7h, salvo em serviço ou com `preferencias.avisos_noite = true` (`PATCH /eu`).
 
 ## Painel de administração (`/admin/*`)
 Sessão própria, separada da do app: cookie `cuidados_admin` (httpOnly, `SameSite=Strict`, 8 h, cai após 30 min parada), **sem Bearer**. Toda escrita exige `X-Cuidados-Admin: 1`. A sessão do app nunca abre o painel e a do painel nunca abre o app. Papéis: **leitura** < **operador** < **dono**. Ações com 🖊 exigem `{motivo}` (mín. 10 letras), gravado na auditoria com o e-mail de quem fez. Detalhes em `docs/ADMIN.md`.

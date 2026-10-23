@@ -68,6 +68,8 @@ final class EuControlador extends Controlador
                 'fonte' => max(1, min(3, (int)($pref['fonte'] ?? 1))),
                 'voz' => (bool)($pref['voz'] ?? false),
                 'modo' => in_array($pref['modo'] ?? 'conversa', ['conversa', 'padrao'], true) ? ($pref['modo'] ?? 'conversa') : 'conversa',
+                // App: avisos no celular das 21h às 7h (padrão: não). Quem decide é a própria pessoa.
+                'avisos_noite' => (bool)($pref['avisos_noite'] ?? false),
             ];
         }
         $v->validar();
@@ -414,6 +416,7 @@ final class EuControlador extends Controlador
                 ['a' => $agora, 'a2' => $agora, 'u' => $uid]
             );
             Sessao::revogarTodas($uid);
+            Bd::exec('DELETE FROM dispositivos WHERE usuario_id = :u', ['u' => $uid]);
             Auditoria::registrar('conta.excluida', 'usuario', $uid, null, $dadosAuditoria);
         });
     }

@@ -6,6 +6,8 @@ import { telefone } from '@cuidados/core';
 import { falar } from '../../voz';
 import { AbasCuidador } from './AppCuidador';
 import { BotaoSair } from '../../componentes/sair';
+import { BotaoBaixar } from '../../componentes/baixar';
+import { pushDisponivel } from '../../plataforma';
 
 /** Eu: tamanho da letra, ler em voz alta, meus registros, ajuda e sair. */
 export function Eu() {
@@ -36,6 +38,11 @@ export function Eu() {
           <div className="separador" />
           <div className="linha-h"><span className="cresce"><b>Ler as mensagens em voz alta</b><br /><span className="sutil">O app lê os avisos para você</span></span>
             <Interruptor rotulo="Ler em voz alta" ligado={!!pref.voz} aoMudar={(v) => { void salvar({ voz: v }); if (v) falar('Pronto. Vou ler os avisos para você.'); }} /></div>
+          {pushDisponivel && <>
+            <div className="separador" />
+            <div className="linha-h"><span className="cresce"><b>Avisos à noite</b><br /><span className="sutil">Das 21h às 7h. Desligado: o celular fica quieto, a não ser quando você está em serviço.</span></span>
+              <Interruptor rotulo="Avisos à noite" ligado={!!pref.avisos_noite} aoMudar={(v) => void salvar({ avisos_noite: v })} /></div>
+          </>}
         </div>
         <div className="cartao pilha">
           <div className="linha-h"><span aria-hidden>🏢</span><span className="cresce"><b>Empresas</b><br /><span className="sutil">Pedidos das empresas e as redes de que você faz parte</span></span></div>
@@ -43,7 +50,7 @@ export function Eu() {
         </div>
         <div className="cartao pilha">
           <div className="linha-h"><span aria-hidden>🛡️</span><span className="cresce"><b>Meus registros guardados</b><br /><span className="sutil">Tudo o que você mandou fica guardado com dia e hora. Comprova os serviços que você prestou.</span></span></div>
-          <a className="botao secundario largo" href={api.urlExportarEu()} download>Baixar uma cópia</a>
+          <BotaoBaixar rotulo="Baixar uma cópia" nome="ahvita-cuidados-meus-registros.json" baixar={api.exportarEu} />
         </div>
         <div className="cartao pilha">
           <div className="linha-h"><span aria-hidden>❓</span><span className="cresce"><b>Preciso de ajuda com o app</b><br /><span className="sutil">Fale com o suporte pelo WhatsApp</span></span></div>

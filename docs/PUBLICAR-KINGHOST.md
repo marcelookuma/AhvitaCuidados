@@ -208,7 +208,7 @@ Limite: se ninguém abrir o app por horas, os alertas só são calculados na pr�
 **Opcional, para rodar mesmo sem ninguém usando:** um serviço gratuito como o cron-job.org chama a API a cada 5 minutos.
 1. Gere uma chave longa: `php -r "echo bin2hex(random_bytes(32));"` (ou qualquer gerador de 64 caracteres aleatórios).
 2. Em `configuracao.php`: `'tarefas' => ['automaticas' => true, 'chave' => 'A-CHAVE'],`
-3. No cron-job.org: URL `https://cuidados.ahvita.com/api/v1/sistema/tarefas`, método **POST**, a cada 5 min, cabeçalho `X-Chave-Tarefas: A-CHAVE`.
+3. No cron-job.org: URL `https://cuidados.ahvita.com/api/v1/sistema/tarefas`, método **POST**, a cada 5 min (a cada **1 min** quando o app Android estiver com avisos no celular ligados), cabeçalho `X-Chave-Tarefas: A-CHAVE`.
 
 A chamada não leva nem devolve dados de pessoas (só quantos alertas foram gerados). Com a chave errada ou vazia, a API responde 404.
 
@@ -253,3 +253,6 @@ O arquivo `.github/workflows/publicar.yml` faz, a cada envio para a branch `main
 3. **Confere** se `URL_APP/api/index.php?r=/saude` responde.
 
 As migrações do banco (`db/002_*.sql` em diante) são aplicadas pelo cron em até 5 minutos depois da publicação.
+
+## App Android
+O app Android usa a mesma API e as mesmas telas. No servidor, só duas coisas: colar a chave do Firebase em `push.fcm_credenciais` (para os avisos no celular) e publicar `/.well-known/assetlinks.json` (para o link de convite abrir no app). Passo a passo em `docs/ANDROID.md`.

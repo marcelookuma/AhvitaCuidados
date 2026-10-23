@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ícone pequeno dos avisos (barra de status): o Android pede desenho branco e chapado. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="512" android:viewportHeight="512">
+    <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd"
+        android:pathData="M256,388c-8,0 -15,-3 -21,-8C176,330 120,283 120,214c0,-44 34,-78 76,-78 26,0 47,12 60,31 13,-19 34,-31 60,-31 42,0 76,34 76,78 0,69 -56,116 -115,166 -6,5 -13,8 -21,8zM196,236h40v-40h40v40h40v40h-40v40h-40v-40h-40z" />
+</vector>

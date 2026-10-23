@@ -1,6 +1,6 @@
 # Ahvita Cuidados — Arquitetura (MVP v2)
 
-> Base: wireframe v5 completo (143 telas). Escopo do MVP: **Cuidador(a) — versão Conversa**, **Gestor(a) — funções básicas**, **Empresa — funções básicas**. Web responsiva (PWA) agora; Android/iOS previstos sem reescrever regras nem contrato da API.
+> Base: wireframe v5 completo (143 telas). Escopo do MVP: **Cuidador(a) — versão Conversa**, **Gestor(a) — funções básicas**, **Empresa — funções básicas**. Web responsiva (PWA) e **app Android com as mesmas telas** (Capacitor, `docs/ANDROID.md`); iOS sai do mesmo projeto, sem reescrever regras nem contrato da API.
 
 ## 1. Restrições que moldaram a arquitetura
 
@@ -19,11 +19,11 @@
 flowchart LR
   subgraph Aparelho
     W["App web (PWA)<br/>React + TS"]
-    M["App Android/iOS<br/>(fase 2, Expo)"]
+    M["App Android (Capacitor)<br/>mesmas telas + plataforma.ts"]
     C[("@cuidados/core<br/>tipos · API · fila offline<br/>catálogo de registros · lembretes")]
     IDB[("IndexedDB<br/>fila + ficha SOS")]
     W --- C
-    M --- C
+    M --- W
     W --- IDB
   end
   subgraph KingHost["KingHost (revenda) — cuidados.ahvita.com"]
@@ -38,6 +38,7 @@ flowchart LR
   end
   C -- "HTTPS JSON /api/v1<br/>cookie httpOnly (web) · Bearer (app)" --> A
   P -. "código de acesso" .-> T["Twilio Verify (SMS/WhatsApp)<br/>SMTP KingHost (e-mail)"]
+  P -. "avisos no celular (outbox, 1 min)" .-> FB["Firebase Cloud Messaging"] -.-> M
 ```
 
 **Um app, modo por perfil**: o mesmo usuário pode ser cuidador(a) de uma pessoa e gestor(a) de outra. `GET /eu` devolve os papéis e o app abre `/c` (cuidador), `/g` (acompanhamento: gestor, Rede de Apoio, equipe de saúde) ou `/e/{id}` (empresa). Cada perfil tem **onboarding próprio** (`/bem-vindo/gestor|cuidador|empresa`), separado do app principal.
@@ -45,10 +46,10 @@ flowchart LR
 ## 3. Camadas
 
 ### 3.1 `packages/core` (TypeScript puro, sem React e sem navegador)
-Reaproveitado sem mudança no app Android/iOS.
+Usado igual pela web e pelo app Android (o app roda as mesmas telas).
 - `tipos.ts` — contrato da API v1.
 - `api.ts` — cliente HTTP (cookie na web, Bearer no app).
-- `fila.ts` — fila offline com armazenamento trocável (IndexedDB na web; SQLite/AsyncStorage no app).
+- `fila.ts` — fila offline com armazenamento trocável (IndexedDB, na web e no app).
 - `itens.ts` — catálogo dos registros de 1 toque da versão Conversa (9 principais + 10 em "Mais coisas"), com pronomes por sexo e faixas de alerta (febre, pressão, glicemia).
 - `lembretes.ts` — doses do dia e água, calculados no aparelho (funcionam sem internet).
 - `vocabulario.json` — termos proibidos (risco trabalhista/terminologia), usados no build.
@@ -108,15 +109,15 @@ O(a) gestor(a) liga/desliga cada funcionalidade por vínculo. `administrar` nunc
 | Fase | Volume aproximado | Infra | O que muda no código |
 |---|---|---|---|
 | **1. Validação (agora)** | até ~300 pessoas cuidadas ativas | KingHost revenda (PHP + MariaDB) | nada |
-| **2. Tração** | ~300 a 5 mil | KingHost Cloud/VPS: PHP-FPM + Nginx, MariaDB dedicado, Redis | Trocar a consulta periódica por **WebSocket** (serviço pequeno lendo o outbox); fotos/áudios em **armazenamento de objetos S3-compatível**; limite de tentativas no Redis; push nativo |
+| **2. Tração** | ~300 a 5 mil | KingHost Cloud/VPS: PHP-FPM + Nginx, MariaDB dedicado, Redis | Trocar a consulta periódica por **WebSocket** (serviço pequeno lendo o outbox); fotos/áudios em **armazenamento de objetos S3-compatível**; limite de tentativas no Redis; push saindo de um serviço dedicado em vez das tarefas de 1 min |
 | **3. Escala** | > 5 mil | Nuvem gerenciada (GCP/AWS): contêineres, banco gerenciado com réplica de leitura | API sem estado já permite várias instâncias; leituras pesadas (painéis) em réplica; filas para notificações |
 
 O que **já está pronto** para isso: API sem estado em memória, IDs ULID (sem depender de auto-incremento), clientes idempotentes, outbox, autorização num ponto só, contrato versionado (`/api/v1`) e core compartilhado.
 
 **Gargalo conhecido da fase 1**: a consulta a cada 5 s. Com 100 conversas abertas ao mesmo tempo são ~20 requisições/s — dentro do que um plano compartilhado aguenta, mas é o primeiro ponto a migrar.
 
-## 8. App Android/iOS (fase 2)
-Ver `apps/mobile/README.md`. Expo (React Native) reutilizando `@cuidados/core`; token no SecureStore; fila no SQLite; câmera/microfone nativos; push (FCM/APNs) alimentado pelo outbox; prioridade Android (cuidador(a)).
+## 8. App Android
+Ver `docs/ANDROID.md`. Capacitor empacota as **mesmas telas** da web; o que muda no aparelho fica em `apps/web/src/plataforma.ts` (token no cofre, mídias com Bearer, voz nativa, "voltar", compartilhar, push). A API libera a origem do app sem cookie (`cors.origens_app`), registra aparelhos em `/dispositivos` e envia avisos pelo Firebase a partir do outbox (`Support/Push.php`), com silêncio noturno para cuidador(a). APK e AAB saem do GitHub Actions (`android.yml`).
 
 ## 9. Estrutura de arquivos
 ```
@@ -125,17 +126,20 @@ cuidados/
 │  ├─ public/index.php       porta de entrada (vai para www/api/)
 │  ├─ src/
 │  │  ├─ bootstrap.php       autoload PSR-4 + configuração
-│  │  ├─ Rotas.php           contrato v1 (62 rotas)
+│  │  ├─ Rotas.php           contrato v1 (86 rotas do app + 31 do painel)
 │  │  ├─ Http/               Kernel, Roteador, Requisicao, Resposta
 │  │  ├─ Auth/               Sessao, Otp, Canais (Twilio/e-mail), Email (SMTP)
-│  │  ├─ Support/            Bd (PDO), Valida, Tempo, Ulid, Auditoria, Config, ErroHttp
+│  │  ├─ Support/            Bd (PDO), Valida, Tempo, Ulid, Auditoria, Config, ErroHttp, Push (Firebase)
 │  │  └─ Modulos/            Acesso, Permissoes, RegrasAgenda, Avisos, Conversas, Formata + controladores
 │  ├─ bin/                   instalar, agendador (cron), auditoria, demo
 │  ├─ config/                configuracao.exemplo.php
 │  └─ tests/fluxo.php        teste de ponta a ponta (91 verificações)
 ├─ db/001_schema.sql         esquema (MariaDB/MySQL, sem triggers)
 ├─ packages/core/            regras e cliente compartilhados (web e app)
-├─ apps/web/                 PWA React
+├─ apps/web/                 PWA React (e as telas do app Android)
+│  ├─ android/               projeto nativo Android (Capacitor) — com.ahvita.cuidados
+│  ├─ capacitor.config.ts    configuração do app
+│  ├─ src/plataforma.ts      o que muda entre web e Android
 │  └─ src/telas/
 │     ├─ acesso/             Entrar, Código, Convite, Escolha de perfil
 │     ├─ onboarding/         BemVindo, Gestor, Cuidador, Empresa (separados)
@@ -143,7 +147,6 @@ cuidados/
 │     ├─ cuidador/           Conversas, Agenda, Eu, conversa com a empresa
 │     ├─ acompanhamento/     Hoje, Linha do tempo, Remédios, Plano, Quem cuida, Atendimentos, Cadastro e privacidade
 │     └─ empresa/            Painel, Atendimentos, Cuidadores(as), Clientes, Conversas
-├─ apps/mobile/README.md     plano do app nativo
 ├─ scripts/                  verificar-termos (build falha com vocabulário de vínculo), empacotar-kinghost
 └─ docs/                     este documento, API, banco, publicação, decisões e riscos
 ```

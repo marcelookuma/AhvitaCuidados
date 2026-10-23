@@ -48,7 +48,8 @@ erDiagram
 | `alertas` | painel do gestor e da empresa | único por (tipo, referência) |
 | `consentimentos` | LGPD | termos, dados_saude, responsavel_legal, versionados |
 | `auditoria` | trilha encadeada por hash | sem dado de saúde |
-| `eventos_saida` | outbox | base para push/WhatsApp/WebSocket |
+| `eventos_saida` | outbox | avisos no celular (push) saem daqui a cada minuto; base para WhatsApp/WebSocket; processados apagados após 30 dias |
+| `dispositivos` | aparelhos do app que recebem avisos (`007`) | token do Firebase único; preso à sessão (`sessao_id`): sessão encerrada = aparelho apagado |
 | `pedidos_cliente` | pedido de vínculo empresa ↔ pessoa cuidada, nos dois sentidos (`006`) | `origem` gestor/empresa; `pessoa_id` definida pelo(a) gestor(a) (ao pedir ou ao aceitar); `permissoes` liberadas ou pedidas; `chave_pendente` única; vence em 30 dias |
 | `pedidos_rede` | pedido para entrar na rede de uma empresa, nos dois sentidos (`004_pedidos_rede.sql`) | `origem` empresa/cuidador; `status` pendente/aceito/recusado/cancelado/expirado; `chave_pendente` única garante 1 pendente por empresa + cuidador(a) sem gatilho; vence em 30 dias |
 | `admin_usuarios` | equipe do painel `/admin` | e-mail + `google_sub` do 1º acesso; papel leitura/operador/dono (`003_admin.sql`) |

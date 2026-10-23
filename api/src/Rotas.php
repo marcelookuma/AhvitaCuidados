@@ -14,6 +14,7 @@ use Cuidados\Modulos\AuthControlador as Auth;
 use Cuidados\Modulos\ConversasControlador as Conv;
 use Cuidados\Modulos\ConvitesControlador as Convites;
 use Cuidados\Modulos\CuidadoControlador as Cuidado;
+use Cuidados\Modulos\DispositivosControlador as Dispositivos;
 use Cuidados\Modulos\EmpresasControlador as Empresas;
 use Cuidados\Modulos\EuControlador as Eu;
 use Cuidados\Modulos\MidiasControlador as Midias;
@@ -46,6 +47,10 @@ final class Rotas
         $r->add('GET', '/eu/convites', [Eu::class, 'convites']);
         $r->add('GET', '/eu/exportar', [Eu::class, 'exportar']);
         $r->add('POST', '/eu/excluir', [Eu::class, 'excluir']);
+
+        // Aparelhos do app (avisos no celular)
+        $r->add('POST', '/dispositivos', [Dispositivos::class, 'registrar']);
+        $r->add('POST', '/dispositivos/remover', [Dispositivos::class, 'remover']);
 
         // Pessoa cuidada
         $r->add('GET', '/pessoas', [Pessoas::class, 'listar']);

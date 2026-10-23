@@ -1,16 +1,16 @@
 # Ahvita Cuidados — MVP v2
 
-Coordenação de cuidados para pessoas de qualquer idade. Web responsiva (PWA) com **Cuidador(a) na versão Conversa**, **Gestor(a)** e **Empresa**; API PHP + MySQL/MariaDB para a **KingHost (revenda)**; núcleo compartilhado pronto para o app Android/iOS.
+Coordenação de cuidados para pessoas de qualquer idade. Web responsiva (PWA) e **app Android com as mesmas telas** (Capacitor), com **Cuidador(a) na versão Conversa**, **Gestor(a)** e **Empresa**; API PHP + MySQL/MariaDB para a **KingHost (revenda)**.
 
 | Documento | Conteúdo |
 |---|---|
 | `docs/ARQUITETURA.md` | arquitetura, escalabilidade, segurança, estrutura de arquivos |
-| `docs/API.md` | os 62 endpoints |
+| `docs/API.md` | os endpoints (86 do app, 31 do painel) |
 | `docs/BANCO.md` | esquema e diagrama |
 | `docs/PUBLICAR-KINGHOST.md` | passo a passo de publicação |
 | `docs/DECISOES-E-RISCOS.md` | decisões, ⚖️ riscos trabalhistas e LGPD, fora do MVP |
 | `docs/ADMIN.md` | painel `cuidados.ahvita.com/admin`: acesso com Google, papéis, log de acessos |
-| `apps/mobile/README.md` | plano do app nativo |
+| `docs/ANDROID.md` | app Android (Capacitor, mesmas telas da web): como funciona, push, segurança, publicação na Play Store |
 
 ## Rodar localmente
 Requisitos: PHP 8.1+ (pdo_mysql, curl, fileinfo, mbstring), MariaDB/MySQL, Node 18+.
@@ -39,6 +39,8 @@ php api/tests/rede.php http://127.0.0.1:8099    # 45 verificações dos pedidos 
 php api/tests/conta.php http://127.0.0.1:8099   # Meus dados (editar o próprio cadastro); SEM_CELULAR_URL testa servidor sem SMS
 php api/tests/clientes.php http://127.0.0.1:8099 # 40 verificações do vínculo empresa ↔ pessoa cuidada
 php api/tests/convites.php http://127.0.0.1:8099 # 15 verificações de "Convites para você" no início
+php api/tests/dispositivos.php http://127.0.0.1:8099 # 27 verificações do app Android: aparelhos, CORS e avisos no celular
 php api/bin/auditoria.php  # confere a trilha de auditoria encadeada
 npm run pacote:kinghost    # gera pacote-kinghost/ (www/ + privado/)
+npm run build:android      # gera as telas do app Android e sincroniza apps/web/android (APK/AAB: Actions → "App Android")
 ```

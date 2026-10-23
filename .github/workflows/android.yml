@@ -1,0 +1,113 @@
+# Gera o app Android (as mesmas telas da web, empacotadas com Capacitor).
+# Resultado em Actions → execução → Artifacts:
+#   ahvita-cuidados-usb-<n>.apk     versão de desenvolvimento: só instala por cabo USB (adb/Android Studio)
+#   ahvita-cuidados-piloto-<n>.apk  assinada: para o piloto com cuidadores(as)  ┐ só quando a chave de
+#   ahvita-cuidados-<n>.aab         vai para a Play Store (teste interno/produção) ┘ envio estiver nos segredos
+#
+# Atenção (Brasil, desde 30/09/2026): APK mandado por WhatsApp/link só instala se o app estiver
+# registrado no Play Console por desenvolvedor verificado, com a MESMA chave que assina o APK.
+# Por isso o piloto usa a versão assinada (chave fixa), nunca a de desenvolvimento.
+#
+# Segredos opcionais (Settings → Secrets and variables → Actions → Secrets):
+#   GOOGLE_SERVICES_JSON       conteúdo do google-services.json do Firebase (liga os avisos no celular)
+#   ANDROID_KEYSTORE_BASE64    chave de ENVIO (upload key) em base64: base64 -w0 envio.jks
+#   ANDROID_KEYSTORE_SENHA     senha do arquivo da chave
+#   ANDROID_CHAVE_ALIAS        apelido da chave dentro do arquivo
+#   ANDROID_CHAVE_SENHA        senha da chave
+# Variável opcional (aba Variables):
+#   URL_APP                    servidor que o app usa (padrão: https://cuidados.ahvita.com)
+# Este fluxo NÃO publica nada: nem na KingHost, nem na Play Store.
+name: App Android
+
+on:
+  push:
+    branches: [main]
+    paths: ['apps/web/**', 'packages/**', 'package-lock.json', '.github/workflows/android.yml']
+  pull_request:
+    paths: ['apps/web/**', 'packages/**', 'package-lock.json', '.github/workflows/android.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      VERSAO_CODIGO: ${{ github.run_number }}
+      VERSAO_NOME: 1.0.${{ github.run_number }}
+      VITE_URL_APP: ${{ vars.URL_APP || 'https://cuidados.ahvita.com' }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Firebase (avisos no celular), se configurado
+        env:
+          GS: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GS" ]; then
+            printf '%s' "$GS" > apps/web/android/app/google-services.json
+            echo "VITE_PUSH=1" >> "$GITHUB_ENV"
+            echo "Avisos no celular: ligados"
+          else
+            echo "::notice title=Avisos no celular::Sem o segredo GOOGLE_SERVICES_JSON, o app é gerado sem push (todo o resto funciona)."
+          fi
+
+      - name: Telas do app (mesmo código da web) + sincronizar com o Android
+        run: |
+          npm ci
+          npm run build:android
+
+      - name: APK de desenvolvimento (instalação por cabo USB)
+        working-directory: apps/web/android
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Chave de envio para a Play Store, se configurada
+        id: chave
+        env:
+          K: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$K" ]; then
+            printf '%s' "$K" | base64 -d > "$RUNNER_TEMP/envio.jks"
+            echo "ANDROID_KEYSTORE_ARQUIVO=$RUNNER_TEMP/envio.jks" >> "$GITHUB_ENV"
+            echo "tem=sim" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Versão assinada (.apk do piloto e .aab da Play Store)
+        if: steps.chave.outputs.tem == 'sim'
+        working-directory: apps/web/android
+        env:
+          ANDROID_KEYSTORE_SENHA: ${{ secrets.ANDROID_KEYSTORE_SENHA }}
+          ANDROID_CHAVE_ALIAS: ${{ secrets.ANDROID_CHAVE_ALIAS }}
+          ANDROID_CHAVE_SENHA: ${{ secrets.ANDROID_CHAVE_SENHA }}
+        run: ./gradlew --no-daemon assembleRelease bundleRelease
+
+      - name: Separar os arquivos
+        run: |
+          mkdir -p saida
+          cp apps/web/android/app/build/outputs/apk/debug/app-debug.apk "saida/ahvita-cuidados-usb-${VERSAO_CODIGO}.apk"
+          if [ -f apps/web/android/app/build/outputs/apk/release/app-release.apk ]; then
+            cp apps/web/android/app/build/outputs/apk/release/app-release.apk "saida/ahvita-cuidados-piloto-${VERSAO_CODIGO}.apk"
+          fi
+          if [ -f apps/web/android/app/build/outputs/bundle/release/app-release.aab ]; then
+            cp apps/web/android/app/build/outputs/bundle/release/app-release.aab "saida/ahvita-cuidados-${VERSAO_CODIGO}.aab"
+          fi
+          rm -f "$RUNNER_TEMP/envio.jks" apps/web/android/app/google-services.json
+          ls -la saida
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: app-android-${{ github.run_number }}
+          path: saida/
+          retention-days: 30

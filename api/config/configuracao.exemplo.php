@@ -62,9 +62,21 @@ return [
         'client_id' => '',        // ex.: '1234567890-abc123.apps.googleusercontent.com'
     ],
 
-    // Só se o app móvel/web rodar em outro endereço (ex.: desenvolvimento)
+    // Só se o app web rodar em outro endereço (ex.: desenvolvimento). 'origens' aceita o cookie de sessão.
+    // 'origens_app': o app Android (Capacitor) roda em https://localhost e entra só com o token (sem cookie).
     'cors' => [
         'origens' => [],
+        'origens_app' => ['https://localhost'],
+    ],
+
+    // Avisos no celular (app Android/iOS) pelo Firebase Cloud Messaging.
+    // Firebase → Configurações do projeto → Contas de serviço → "Gerar nova chave privada".
+    // Cole o CONTEÚDO do arquivo JSON entre as aspas simples abaixo (este arquivo é .php e
+    // nunca é mostrado pelo servidor). NÃO envie o .json solto por FTP: na KingHost a pasta
+    // privada pode ficar dentro da www, e um .json ali poderia ser baixado por qualquer um.
+    // Vazio = o app funciona igual, só não manda avisos com o app fechado.
+    'push' => [
+        'fcm_credenciais' => '',  // ex.: '{"type":"service_account","project_id":"…","private_key":"-----BEGIN…", …}'
     ],
 
     'termos' => ['versao' => '2026-10'],

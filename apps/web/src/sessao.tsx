@@ -3,6 +3,8 @@ import { ErroApi, type Eu } from '@cuidados/core';
 import { api, fila } from './servicos';
 import { apagarTudo } from './armazenamento';
 import { navegar } from './rota';
+import { apagarToken, desativarAvisos } from './plataforma';
+import { esquecerMidias } from './componentes/midia';
 
 interface Sessao {
   eu: Eu | null;
@@ -49,8 +51,12 @@ export function ProvedorSessao({ children }: { children: ReactNode }) {
   }, []);
 
   const sair = useCallback(async () => {
+    // O aparelho deixa de receber avisos desta conta (antes de encerrar a sessão).
+    await desativarAvisos((t) => api.removerDispositivo(t));
     try { await api.sair(); } catch { /* sem internet: apaga local mesmo assim */ }
     // Dados de saúde não ficam no aparelho depois de sair (LGPD): sessão, cópias e fila.
+    await apagarToken();
+    esquecerMidias();
     localStorage.clear();
     sessionStorage.clear();
     await apagarTudo();

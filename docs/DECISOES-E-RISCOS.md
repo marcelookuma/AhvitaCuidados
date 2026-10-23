@@ -13,6 +13,8 @@
 | **Login por código**, sem senha | Baixo letramento digital; sem senha fraca para vazar | E-mail + senha |
 | **Continuar com o Google** como alternativa (opcional, `google.client_id`) | Quem tem Android já está logado no Google: um toque, sem esperar código. Verificação do ID token no próprio PHP (openssl), sem biblioteca. Mesmo e-mail confirmado = mesma conta | Redirecionamento OAuth (exige reescrita de URL que o nginx da KingHost ignora) e One Tap automático (janela que aparece sozinha confunde quem tem baixo letramento) |
 | Convite enviado pelo **WhatsApp de quem convida** (link `wa.me`) | Custo zero e o app não "fala" em nome de ninguém | SMS pago pelo app |
+| App Android com **Capacitor** (as mesmas telas da web num app nativo) — `docs/ANDROID.md` | Uma interface só: web e Android sempre iguais; custo de manutenção de um app; reaproveita fila offline, regras e testes. Push, cofre do token, câmera, voz e "voltar" nativos | Expo/React Native (plano anterior): reescreveria as ~40 telas e manteria duas interfaces. Reavaliar só se o piloto mostrar lentidão em celulares simples |
+| **Push pelo Firebase** lendo a fila de saída já existente, a cada minuto, sem biblioteca | Funciona na hospedagem compartilhada (sem processo contínuo); nada muda nas regras da API | Serviço de push pago de terceiros |
 | Transcrição de áudio e leitura do aparelho de pressão por foto **fora do MVP** | Exigem serviço de IA pago e, em geral, fora do Brasil (LGPD art. 33) | — |
 
 ## 2. Risco trabalhista — o que o código já protege
@@ -22,6 +24,8 @@
 - Presença: só início e fim. Nenhum total de horas, atraso ou ranking em tela alguma.
 - Plano de cuidado descreve necessidades da pessoa; não é lista de tarefas com horário.
 - Empresa não vê a agenda completa do(a) cuidador(a), só se está disponível quando envia a proposta.
+- ⚖️ **Avisos no celular (app Android)**: das 21h às 7h o celular do(a) cuidador(a) fica quieto, a não ser que esteja em serviço ou tenha ligado "Avisos à noite" (escolha dele(a), em *Eu*). Pedidos de atendimento esperam até as 7h. Textos sem cobrança ("veja e decida se aceita"). Aviso de contratante a qualquer hora pode ser lido como subordinação e sobreaviso.
+- ⚖️ **App sem localização**: o Android não pede GPS em momento algum; nada de check-in por geolocalização. Se um dia pedirem "confirmar chegada pelo GPS", é controle de jornada: não fazer para MEI/autônomo(a).
 
 ### Empresa acompanhando a pessoa cuidada (pedido nos dois sentidos)
 - O(a) gestor(a) procura a empresa e pede, ou a empresa pede ao(à) gestor(a) pelo celular ou e-mail. **Quem decide o que a empresa vê é sempre o(a) gestor(a)**, item por item (atendimentos, linha do tempo, plano, remédios, fotos, conversa, ficha), e pode liberar menos do que a empresa pediu, mudar depois ou encerrar.
@@ -55,13 +59,16 @@
 
 8. **Painel `/admin` e log de acessos** (`docs/ADMIN.md`): o painel mostra cadastro, vínculos e contagens, **nunca** conteúdo de saúde; toda leitura do painel vai para o log e toda mudança vai para a auditoria com justificativa. O log guarda IP e data/hora de todos os perfis por ≥ 6 meses (Marco Civil, art. 15) e permite responder ao titular **quem acessou seus dados**. Base legal a registrar no RIPD: cumprimento de obrigação legal (Marco Civil) e segurança (legítimo interesse). Informar na política de privacidade (minuta ainda não cita o log).
 9. ⚖️ **Log de acessos não é ferramenta de gestão de cuidador(a)**: o painel não calcula horas, tempo conectado, atrasos nem ranking, e as leituras de rotina ficam só somadas por dia, sem horário. Nunca entregar relatório do log a gestor(a) ou empresa para acompanhar cuidador(a) MEI/autônomo(a): seria prova de controle (subordinação). Pedido judicial ou do titular segue pelo canal do encarregado(a).
+10. **App Android**: dados do app fora do backup do Google e da cópia entre aparelhos; token no cofre do aparelho (Keystore); fotos e áudios recebidos só na memória; texto dos avisos sem nome nem dado de saúde (aparece na tela bloqueada). **Firebase (Google) é transferência internacional**: o conteúdo enviado é só o texto genérico e o caminho da tela, mas o token do aparelho e o horário vão ao Google. Informar na política de privacidade e no RIPD (a minuta ainda não cita o Firebase).
+11. **Play Store**: preencher a Declaração de apps de saúde e a seção Segurança dos dados de acordo com o RIPD; a exclusão de conta pelo app (*Meus dados → Excluir minha conta*) é exigência da loja e direito do titular.
 
 ## 5. Custos a acompanhar
+- App Android: conta de desenvolvedor da Play Store (taxa única), Firebase Cloud Messaging sem custo por aviso; Mac + conta Apple só quando for fazer o iOS.
 - Twilio Verify cobra por verificação enviada: o login por e-mail é gratuito. Sessão de 30 dias reduz pedidos de código.
 - Consulta periódica gera tráfego proporcional a conversas abertas; é o primeiro item a migrar na fase 2.
 
 ## 6. Fora do MVP (do wireframe v5)
-Rede de Apoio com telas próprias (hoje usa o painel de acompanhamento, conforme permissões) · Pessoa cuidada ("como me sinto") · Médico(a) e Equipe de saúde com prontuário e isolamento de psicologia · Itens de enfermagem na tela do(a) cuidador(a) (o registro `procedimento` já existe na API, restrito à enfermagem) · Pele com mapa corporal · Despesas com rateio e reembolso · Tarefas da Rede · Capacitação · Carteira profissional · Exames · Push nativo · Transcrição de áudio e leitura por foto · Pagamentos.
+Rede de Apoio com telas próprias (hoje usa o painel de acompanhamento, conforme permissões) · Pessoa cuidada ("como me sinto") · Médico(a) e Equipe de saúde com prontuário e isolamento de psicologia · Itens de enfermagem na tela do(a) cuidador(a) (o registro `procedimento` já existe na API, restrito à enfermagem) · Pele com mapa corporal · Despesas com rateio e reembolso · Tarefas da Rede · Capacitação · Carteira profissional · Exames · Transcrição de áudio e leitura por foto · Pagamentos.
 
 ## 7. Relação com a v1 anterior
-Esta versão **substitui** a v1 (Node.js + MySQL para a Hospedagem Node.js). Mudanças: API reescrita em PHP para o plano de revenda; inclusão da versão Conversa como padrão do(a) cuidador(a), do perfil Empresa e da conversa direta empresa ↔ cuidador(a); núcleo de regras extraído em `packages/core` para o app nativo.
+Esta versão **substitui** a v1 (Node.js + MySQL para a Hospedagem Node.js). Mudanças: API reescrita em PHP para o plano de revenda; inclusão da versão Conversa como padrão do(a) cuidador(a), do perfil Empresa e da conversa direta empresa ↔ cuidador(a); núcleo de regras extraído em `packages/core` para o app nativo. Em out/2026 o app Android passou a ser feito com Capacitor sobre as mesmas telas (ver `docs/ANDROID.md`).

@@ -10,7 +10,11 @@ export type Sexo = 'feminino' | 'masculino' | 'intersexo' | 'nao_informar';
 
 export interface Autor { id: string; nome: string }
 
-export interface Preferencias { fonte?: 1 | 2 | 3; voz?: boolean; modo?: 'conversa' | 'padrao' }
+export interface Preferencias {
+  fonte?: 1 | 2 | 3; voz?: boolean; modo?: 'conversa' | 'padrao';
+  /** App: receber avisos no celular das 21h às 7h (padrão: não; quem decide é a própria pessoa) */
+  avisos_noite?: boolean;
+}
 
 export interface Usuario {
   id: string;

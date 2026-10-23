@@ -3,6 +3,7 @@ import { ARRANJOS, type Pessoa } from '@cuidados/core';
 import { api } from '../../servicos';
 import { navegar } from '../../rota';
 import { Campo, ErroGeral, useAcao, useLanche } from '../../componentes/ui';
+import { BotaoBaixar } from '../../componentes/baixar';
 
 /** Cadastro, ficha de emergência e direitos LGPD (cópia dos dados e exclusão). */
 export function Dados({ pessoa, aoSalvar }: { pessoa: Pessoa; aoSalvar: () => void }) {
@@ -67,7 +68,7 @@ export function Dados({ pessoa, aoSalvar }: { pessoa: Pessoa; aoSalvar: () => vo
       <section className="cartao pilha">
         <h3 style={{ margin: 0 }}>🔒 Seus direitos (LGPD)</h3>
         <p className="sutil" style={{ margin: 0 }}>Baixe uma cópia de tudo o que foi registrado sobre {pessoa.apelido}, em formato aberto (JSON).</p>
-        <a className="botao secundario" style={{ alignSelf: 'flex-start' }} href={api.urlExportarPessoa(pessoa.id)} download>Baixar cópia dos dados</a>
+        <BotaoBaixar rotulo="Baixar cópia dos dados" nome={`ahvita-cuidados-${pessoa.id}.json`} baixar={() => api.exportarPessoa(pessoa.id)} className="botao secundario" style={{ alignSelf: 'flex-start' }} />
         <div className="separador" />
         <p style={{ margin: 0 }}><b>Excluir os dados de {pessoa.apelido}</b></p>
         <p className="sutil" style={{ margin: 0 }}>Apaga registros, mensagens, fotos, áudios e remédios. Fica só o registro de presença (quem atendeu e quando), sem dados de saúde, para comprovar os serviços prestados. Não dá para desfazer.</p>

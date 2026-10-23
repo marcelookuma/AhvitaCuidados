@@ -75,12 +75,18 @@ final class Kernel
             'Cache-Control' => $r->cabecalhos['Cache-Control'] ?? 'no-store',
         ];
         $origem = $req->cabecalho('origin');
-        $permitidas = (array)Config::get('cors.origens', []);
-        if ($origem !== null && in_array($origem, $permitidas, true)) {
+        $comCookie = in_array($origem, (array)Config::get('cors.origens', []), true);
+        // App Android (Capacitor, origem https://localhost): entra só com o token Bearer.
+        // Sem "Allow-Credentials": o cookie da web nunca vale a partir dessa origem.
+        $doApp = in_array($origem, (array)Config::get('cors.origens_app', []), true);
+        if ($origem !== null && ($comCookie || $doApp)) {
             $r->cabecalhos['Access-Control-Allow-Origin'] = $origem;
-            $r->cabecalhos['Access-Control-Allow-Credentials'] = 'true';
-            $r->cabecalhos['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Cuidados, X-Cuidados-Admin';
+            if ($comCookie) $r->cabecalhos['Access-Control-Allow-Credentials'] = 'true';
+            $r->cabecalhos['Access-Control-Allow-Headers'] = $comCookie
+                ? 'Content-Type, Authorization, X-Cuidados, X-Cuidados-Admin'
+                : 'Content-Type, Authorization, X-Cuidados';
             $r->cabecalhos['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS';
+            $r->cabecalhos['Access-Control-Max-Age'] = '600'; // menos idas ao servidor no 3G/4G
             $r->cabecalhos['Vary'] = 'Origin';
         }
     }
