@@ -11,6 +11,7 @@
 | **ULID gerado no aparelho** + API idempotente | Registrar sem internet e reenviar sem duplicar | Auto-incremento (quebra com fila offline) |
 | **Um app com modo por perfil** | Decisão de produto já tomada; mesma pessoa pode cuidar e gerir | Apps separados |
 | **Login por código**, sem senha | Baixo letramento digital; sem senha fraca para vazar | E-mail + senha |
+| **Continuar com o Google** como alternativa (opcional, `google.client_id`) | Quem tem Android já está logado no Google: um toque, sem esperar código. Verificação do ID token no próprio PHP (openssl), sem biblioteca. Mesmo e-mail confirmado = mesma conta | Redirecionamento OAuth (exige reescrita de URL que o nginx da KingHost ignora) e One Tap automático (janela que aparece sozinha confunde quem tem baixo letramento) |
 | Convite enviado pelo **WhatsApp de quem convida** (link `wa.me`) | Custo zero e o app não "fala" em nome de ninguém | SMS pago pelo app |
 | Transcrição de áudio e leitura do aparelho de pressão por foto **fora do MVP** | Exigem serviço de IA pago e, em geral, fora do Brasil (LGPD art. 33) | — |
 
@@ -38,6 +39,7 @@
 4. **Retenção após exclusão**: o app mantém só a presença (quem atendeu e quando) como prova do serviço. Definir prazo e base legal (exercício regular de direitos, art. 7º VI / 11 II d).
 5. **Áudios** podem conter dado de saúde: mesma proteção das fotos (já aplicada).
 6. Termos de uso e política de privacidade em `apps/web/public/` são **minutas**.
+7. **Google** (Continuar com o Google): o Google fica sabendo que a pessoa usa o app e quando entra; o app recebe só nome, e-mail e o identificador da conta (`google_sub`). Nenhum dado de saúde vai ao Google. Informar na política (já incluído na minuta) e no RIPD como compartilhamento com controlador independente. O vínculo é apagado na exclusão da conta.
 
 ## 5. Custos a acompanhar
 - Twilio Verify cobra por verificação enviada: o login por e-mail é gratuito. Sessão de 30 dias reduz pedidos de código.

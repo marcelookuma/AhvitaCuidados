@@ -26,6 +26,7 @@ final class Rotas
         $r->add('GET', '/auth/canais', [Auth::class, 'canais'], true);
         $r->add('POST', '/auth/codigo', [Auth::class, 'codigo'], true);
         $r->add('POST', '/auth/entrar', [Auth::class, 'entrar'], true);
+        $r->add('POST', '/auth/google', [Auth::class, 'google'], true);
         $r->add('POST', '/auth/sair', [Auth::class, 'sair']);
 
         // Eu

@@ -34,6 +34,8 @@ final class Config
         'twilio.sid' => '',
         'twilio.token' => '',
         'twilio.verify_sid' => '',
+        'google.client_id' => '',            // "Entrar com Google" (vazio = desligado)
+        'google.certificados_arquivo' => '', // só em ambiente teste (testes automáticos)
         'termos.versao' => '2026-10',
         'tarefas.automaticas' => true,       // roda as tarefas dentro da API (hospedagem sem cron)
         'tarefas.chave' => '',               // para POST /sistema/tarefas (vazio = desligado)

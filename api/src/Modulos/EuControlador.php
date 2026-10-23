@@ -211,7 +211,7 @@ final class EuControlador extends Controlador
             Bd::exec('DELETE FROM disponibilidades WHERE usuario_id = :u', ['u' => $uid]);
             Bd::exec('DELETE FROM bloqueios_agenda WHERE usuario_id = :u', ['u' => $uid]);
             Bd::exec(
-                "UPDATE usuarios SET nome = 'Conta excluída', apelido = NULL, cpf = NULL, telefone = NULL, email = NULL,
+                "UPDATE usuarios SET nome = 'Conta excluída', apelido = NULL, cpf = NULL, telefone = NULL, email = NULL, google_sub = NULL,
                         preferencias = NULL, excluido_em = :a, atualizado_em = :a2 WHERE id = :u",
                 ['a' => $agora, 'a2' => $agora, 'u' => $uid]
             );

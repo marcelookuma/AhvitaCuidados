@@ -32,7 +32,7 @@ Demonstração: (11) 90000-0001 gestor(a) Marcos · 0002 cuidadora Fernanda (MEI
 ```bash
 npm run build              # confere vocabulário + tipos + compila o app
 npm run verificar:termos   # falha se aparecer "trabalhando", "jornada", "patrão", "Família"…
-php api/tests/fluxo.php http://127.0.0.1:8099   # 91 verificações de ponta a ponta (banco vazio)
+php api/tests/fluxo.php http://127.0.0.1:8099   # 108 verificações de ponta a ponta (banco vazio)
 php api/bin/auditoria.php  # confere a trilha de auditoria encadeada
 npm run pacote:kinghost    # gera pacote-kinghost/ (www/ + privado/)
 ```

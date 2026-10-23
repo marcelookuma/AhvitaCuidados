@@ -7,3 +7,4 @@ api/midias-teste/
 *.log
 envio/
 api/logs/
+api/cache/

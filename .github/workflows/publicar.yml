@@ -53,6 +53,9 @@ jobs:
       CODIGO_CANAIS: log,email
       CODIGO_TESTE_FIXO: '123456'
       MIDIAS_PASTA: ${{ github.workspace }}/midias-teste
+      # "Entrar com Google" nos testes: chaves geradas pelo próprio teste (sem internet)
+      GOOGLE_CLIENT_ID: teste-ci.apps.googleusercontent.com
+      GOOGLE_CERTIFICADOS_ARQUIVO: ${{ github.workspace }}/google-certs-teste.json
     steps:
       - uses: actions/checkout@v5
       - uses: shivammathur/setup-php@v2

@@ -132,6 +132,9 @@ a { color: var(--verde-escuro); }
 .marca b { font-size: 1.3em; display: block; }
 .marca span { color: var(--suave); font-size: .85em; }
 .acesso h1 { font-size: 1.5em; margin: .2em 0 0; line-height: 1.2; }
+.ou { display: flex; align-items: center; gap: .8em; color: var(--suave); font-size: .9em; }
+.ou::before, .ou::after { content: ""; flex: 1; border-top: 1px solid var(--linha); }
+.botao-google { display: flex; justify-content: center; min-height: 44px; width: 100%; }
 .codigo-caixas { display: flex; gap: .4em; justify-content: center; }
 .codigo-caixas input { width: 2.4em; height: 3em; text-align: center; font-size: 1.5em; font-weight: 800; border: 2px solid var(--linha); border-radius: var(--raio-p); background: var(--papel); }
 .codigo-caixas input:focus { border-color: var(--verde); outline: none; }
