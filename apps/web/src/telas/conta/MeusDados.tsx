@@ -77,7 +77,7 @@ export function MeusDados() {
   return (
     <div className="painel modo-painel">
       <header className="painel-topo">
-        <div className="marca"><img src="/icone.svg" alt="" /><b>Ahvita Cuidados</b></div>
+        <div className="marca"><img src="/icone.svg" alt="" /><b className="marca-nome">Ahvita Cuidados</b></div>
         <span className="cresce" />
         <button className="botao secundario pequeno" onClick={voltar}>← Voltar</button>
       </header>

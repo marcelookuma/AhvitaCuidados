@@ -263,4 +263,9 @@ a.numero:hover .numero-rotulo { text-decoration: underline; }
   .pares > div:nth-child(odd) { border-right: 0; }
   .numeros { grid-template-columns: 1fr 1fr; }
   .numero:first-child { grid-column: 1 / -1; border-radius: var(--r) var(--r) 0 0; }
+  /* 16px nos campos: abaixo disso o iPhone dá zoom ao tocar. */
+  input, select, textarea { font-size: 16px; }
+  .gaveta-topo, .gaveta-corpo { padding-left: 16px; padding-right: 16px; }
+  .gaveta { height: 100dvh; }
 }
+img { max-width: 100%; height: auto; }

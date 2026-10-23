@@ -91,7 +91,7 @@ function Moldura({ pessoas, atual, children, temOutros }: { pessoas: Pessoa[]; a
   return (
     <div className="painel modo-painel">
       <header className="painel-topo">
-        <div className="marca"><img src="/icone.svg" alt="" /><b>Ahvita Cuidados</b></div>
+        <div className="marca"><img src="/icone.svg" alt="" /><b className="marca-nome">Ahvita Cuidados</b></div>
         {pessoas.length > 0 && (
           <select aria-label="Pessoa cuidada" value={atual?.id ?? ''} onChange={(e) => navegar(e.target.value ? `/g/${e.target.value}` : '/g')}>
             <option value="">Todas as pessoas</option>

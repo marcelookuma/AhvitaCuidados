@@ -115,7 +115,7 @@ export function OnboardingCuidador({ codigoInicial, aoTerminar }: { codigoInicia
               </button>
             ))}
           </div>
-          <div className="grade-2">
+          <div className="grade-2 fixa">
             <label className="campo"><span className="rotulo">Das</span><input type="time" value={ini} onChange={(e) => setIni(e.target.value)} /></label>
             <label className="campo"><span className="rotulo">Até</span><input type="time" value={fim} onChange={(e) => setFim(e.target.value)} /></label>
           </div>
