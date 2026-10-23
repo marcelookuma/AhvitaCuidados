@@ -33,7 +33,7 @@ export function Plano({ pessoa, aoSalvar }: { pessoa: Pessoa; aoSalvar: () => vo
         </Campo>
         <div className="campo"><span className="rotulo">Cuidados específicos</span>
           {pl.cuidados.map((c, i) => (
-            <div key={i} className="grade-2" style={{ gridTemplateColumns: '1fr 2fr auto' }}>
+            <div key={i} className="linha-cuidado">
               <input aria-label="Título" value={c.titulo} disabled={!edita} placeholder="Ex.: Pele" onChange={(e) => setPl({ ...pl, cuidados: pl.cuidados.map((x, k) => (k === i ? { ...x, titulo: e.target.value } : x)) })} />
               <input aria-label="Como" value={c.como} disabled={!edita} placeholder="Ex.: Hidratar as pernas depois do banho" onChange={(e) => setPl({ ...pl, cuidados: pl.cuidados.map((x, k) => (k === i ? { ...x, como: e.target.value } : x)) })} />
               {edita && <button type="button" className="botao fantasma pequeno" aria-label="Tirar" onClick={() => setPl({ ...pl, cuidados: pl.cuidados.filter((_, k) => k !== i) })}>✕</button>}

@@ -101,7 +101,7 @@ export function Agenda() {
         <section className="cartao pilha">
           <h3 style={{ margin: 0 }}>🚫 Bloquear dias</h3>
           <p className="sutil" style={{ margin: 0 }}>Ninguém vê o motivo. Nesses dias não chega proposta.</p>
-          <div className="grade-2">
+          <div className="grade-2 fixa">
             <label className="campo"><span className="rotulo">De</span><input type="date" value={bloq.de} onChange={(e) => setBloq({ ...bloq, de: e.target.value })} /></label>
             <label className="campo"><span className="rotulo">Até</span><input type="date" value={bloq.ate} onChange={(e) => setBloq({ ...bloq, ate: e.target.value })} /></label>
           </div>

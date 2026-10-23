@@ -439,8 +439,8 @@ function Conversas({ id }: { id: string }) {
   return (
     <>
       <h1>Conversas com a equipe</h1>
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(14em, 1fr) 2fr', gap: '1em' }} className="conversas-empresa">
-        <div className="lista-conversas" style={{ border: '1px solid var(--linha)', borderRadius: 14, overflow: 'hidden', alignSelf: 'start' }}>
+      <div className={`conversas-empresa ${atual ? 'com-aberta' : ''}`}>
+        <div className="lista-conversas">
           {r.dados.conversas.length === 0 && <p className="sutil" style={{ padding: '1em' }}>Sem conversas.</p>}
           {r.dados.conversas.map((c) => (
             <button key={c.conversa_id} className="conversa-linha" style={c.conversa_id === aberta ? { background: 'var(--verde-claro)' } : undefined} onClick={() => setAberta(c.conversa_id)}>
@@ -449,7 +449,10 @@ function Conversas({ id }: { id: string }) {
             </button>
           ))}
         </div>
-        <div className="chat-painel">{atual ? <Direta key={atual.conversa_id} conversaId={atual.conversa_id} titulo={atual.com.nome} embutida /> : <Vazio e="💬">Escolha uma conversa.</Vazio>}</div>
+        <div className="chat-painel">
+          {atual && <button className="botao fantasma pequeno so-celular voltar-lista" onClick={() => setAberta(null)}>← Conversas</button>}
+          {atual ? <Direta key={atual.conversa_id} conversaId={atual.conversa_id} titulo={atual.com.nome} embutida /> : <Vazio e="💬">Escolha uma conversa.</Vazio>}
+        </div>
       </div>
     </>
   );
