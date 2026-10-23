@@ -3,7 +3,7 @@
  * Android/iOS (token Bearer guardado no cofre do aparelho).
  */
 import type {
-  Agenda, Alerta, Atendimento, ConversaResumo, ConviteCriado, Empresa, EmpresaEncontrada, Eu, Feed, Janela,
+  Agenda, Alerta, Atendimento, ConversaResumo, ConviteCriado, Empresa, EmpresaEncontrada, Eu, Feed, ItemConvite, Janela,
   Mensagem, MinhaRede, Painel, PedidoCliente, PedidoRede, Pessoa, Registro, Remedio, Usuario, Vinculo,
 } from './tipos';
 
@@ -110,6 +110,8 @@ export function criarApi(op: OpcoesApi) {
     convidarEmpresa: (empresaId: string, d: Record<string, unknown>) => post<ConviteCriado>(`/empresas/${empresaId}/convites`, d),
     convite: (codigo: string) => get<any>(`/convites/${codigo}`),
     aceitarConvite: (codigo: string, d: Record<string, unknown> = {}) => post<{ pessoa_id?: string; empresa_id?: string }>(`/convites/${codigo}/aceitar`, d),
+    recusarConvite: (codigo: string) => post<void>(`/convites/${codigo}/recusar`),
+    meusConvites: () => get<{ itens: ItemConvite[] }>('/eu/convites'),
     revogarConvite: (id: string) => post<void>(`/convites/${id}/revogar`),
     atualizarVinculo: (id: string, d: Record<string, unknown>) => patch<Vinculo>(`/vinculos/${id}`, d),
     encerrarVinculo: (id: string) => post<void>(`/vinculos/${id}/encerrar`),

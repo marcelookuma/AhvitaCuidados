@@ -41,6 +41,7 @@ Base: `https://cuidados.ahvita.com/api/index.php?r=` (funciona em qualquer servi
 | POST | `/eu/contato/remover` | `{campo: telefone\|email\|google}` | só se sobrar outra forma de entrar (409 `ultimo_acesso`) |
 | POST | `/eu/termos` | — | aceite versionado |
 | GET | `/eu/inicio` | — | lista de conversas do(a) cuidador(a) (estilo WhatsApp) |
+| GET | `/eu/convites` | — | "Convites para você" (início de todos os perfis): convites por código para o **celular confirmado**, pedidos de empresas (rede e cliente) e, para a equipe da empresa, pedidos recebidos. Cada item: `{tipo, icone, titulo, texto, rotulo, link, codigo, pode_recusar}` |
 | GET | `/eu/exportar` | — | portabilidade (JSON) |
 | POST | `/eu/excluir` | `{confirmar:"EXCLUIR"}` | bloqueia se for o(a) único(a) gestor(a) de alguém |
 
@@ -65,6 +66,7 @@ Base: `https://cuidados.ahvita.com/api/index.php?r=` (funciona em qualquer servi
 | POST | `/empresas/{id}/convites` | `{tipo: cuidador\|membro\|cliente, nome, telefone?, modalidade?}` | |
 | GET | `/convites/{codigo}` | — | o que será aceito |
 | POST | `/convites/{codigo}/aceitar` | `{pessoa_id?, permissoes?}` | `cliente`: o(a) gestor(a) escolhe a pessoa e o que a empresa vê |
+| POST | `/convites/{codigo}/recusar` | — | "Não é para mim": só o dono do celular de destino (confirmado); some dos pendentes de quem convidou |
 | POST | `/convites/{id}/revogar` | — | |
 | PATCH | `/vinculos/{id}` | `{permissoes?, prazo_confirmacao_min?, modalidade?, relacao?, atua_como_cuidador?}` | `administrar` nunca vai para não-gestor |
 | POST | `/vinculos/{id}/encerrar` | — | histórico fica; bloqueia remover o último gestor |

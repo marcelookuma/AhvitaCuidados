@@ -4,6 +4,7 @@ import { api } from '../../servicos';
 import { navegar } from '../../rota';
 import { useSessao } from '../../sessao';
 import { BotaoSair } from '../../componentes/sair';
+import { ConvitesParaVoce } from '../../componentes/convites';
 import { Campo, ErroGeral, Ouvir, useAcao } from '../../componentes/ui';
 
 /**
@@ -63,6 +64,7 @@ export function BemVindo({ convitePendente }: { convitePendente: string | null }
     <main className="acesso">
       <div className="passos" aria-hidden><i className="feito" /><i className="feito" /><i /></div>
       <h1>Como você vai usar o app?</h1>
+      <ConvitesParaVoce grande />
       <Ouvir texto="Como você vai usar o app? Organizo o cuidado de alguém. Recebi um convite. Ou sou de uma empresa de cuidadores." />
       <div className="escolhas">
         <button className="escolha" onClick={() => navegar('/bem-vindo/gestor')}>

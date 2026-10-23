@@ -7,6 +7,7 @@ import { BotaoSair } from '../../componentes/sair';
 import { useCarregar, useRepetir } from '../../hooks';
 import { Campo, Carregando, ErroGeral, Vazio, useAcao, useLanche } from '../../componentes/ui';
 import { Direta } from '../cuidador/Direta';
+import { ConvitesParaVoce } from '../../componentes/convites';
 import { LinhaDoTempo } from '../acompanhamento/LinhaDoTempo';
 import { EscolherPermissoesEmpresa, nomes } from '../acompanhamento/LigarEmpresa';
 
@@ -67,6 +68,7 @@ function Painel({ id, d, aoMudar }: { id: string; d: Awaited<ReturnType<typeof a
   return (
     <>
       <h1>Painel</h1>
+      <ConvitesParaVoce />
       <section className="indicadores">
         <div className="indicador"><div className="n">{d.equipe}</div><div className="r">cuidadores(as) na rede</div></div>
         <div className="indicador"><div className="n">{d.clientes}</div><div className="r">clientes</div></div>

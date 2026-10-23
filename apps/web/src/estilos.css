@@ -423,3 +423,15 @@ html[data-fonte="3"] .modo-painel { --base: 20px; }
 .codigo-unico { font-size: 1.8em; text-align: center; letter-spacing: .3em; font-weight: 800; padding: .35em; border-radius: 12px; border: 2px solid var(--linha); max-width: 9em; }
 .conta-principal { max-width: 46em; }
 .aviso-empresa { margin: 0; padding: .6em .9em; border-radius: var(--raio-p); background: var(--ambar-claro); color: var(--tinta); font-size: .92em; }
+
+/* ---------- Convites para você (início de todos os perfis) ---------- */
+.convites-voce { display: flex; flex-direction: column; gap: .6em; background: var(--papel); border: 2px solid var(--verde); border-radius: var(--raio); padding: .9em 1em; }
+.convites-voce h2 { font-size: 1em; margin: 0; color: var(--verde-escuro); }
+.convite-item { display: flex; flex-wrap: wrap; align-items: center; gap: .6em .8em; padding-top: .6em; border-top: 1px solid var(--linha-fraca); }
+.convite-item .avatar { background: var(--verde-claro); flex: none; }
+.convite-topo { display: flex; align-items: center; gap: .7em; flex: 1 1 18em; min-width: 0; }
+.convite-acoes { display: flex; flex-wrap: wrap; align-items: center; gap: .4em; }
+.convites-voce.grande { margin: .6em .8em; }
+.convites-voce.grande .convite-item { flex-direction: column; align-items: stretch; }
+.convites-voce.grande .convite-acoes { flex-direction: column; align-items: stretch; }
+.convites-voce.grande .convite-acoes .botao { width: 100%; }

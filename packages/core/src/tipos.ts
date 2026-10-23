@@ -261,3 +261,17 @@ export interface PedidoCliente {
   gestor?: { id: string; nome: string };
   pessoa?: { id: string; apelido: string } | null;
 }
+
+/** Algo esperando a minha resposta (início de todos os perfis): convite por código ou pedido de empresa. */
+export interface ItemConvite {
+  id: string;
+  tipo: 'convite' | 'pedido_rede' | 'pedido_cliente' | 'empresa_rede' | 'empresa_cliente';
+  icone: string;
+  titulo: string;
+  texto: string;
+  rotulo: string;
+  link: string;
+  codigo: string | null;
+  pode_recusar: boolean;
+  em: string | null;
+}
