@@ -31,7 +31,7 @@ erDiagram
 
 | Tabela | Para quê | Notas |
 |---|---|---|
-| `usuarios` | quem usa o app | CPF, telefone, e-mail e `google_sub` (conta Google) únicos; exclusão = anonimização; `bloqueado_em` (bloqueio pelo painel) |
+| `usuarios` | quem usa o app | CPF, telefone, e-mail e `google_sub` (conta Google) únicos; exclusão = anonimização; `bloqueado_em` (bloqueio pelo painel); `telefone_confirmado` (005: 0 = celular só informado, não serve para entrar) |
 | `otp_codigos` | código de acesso | só o HMAC do código; tentativas; IP |
 | `sessoes` | sessões | só SHA-256 do token |
 | `empresas`, `empresa_membros`, `empresa_cuidadores` | empresa, equipe administrativa e rede de cuidadores(as) | `modalidade` (mei/autonomo/clt) decide a regra de agenda |

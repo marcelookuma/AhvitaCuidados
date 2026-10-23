@@ -21,6 +21,7 @@ final class Formata
             'apelido' => $u['apelido'],
             'cpf' => $u['cpf'],
             'telefone' => $u['telefone'],
+            'telefone_confirmado' => $u['telefone'] !== null && (int)($u['telefone_confirmado'] ?? 1) === 1,
             'email' => $u['email'],
             'google' => ($u['google_sub'] ?? null) !== null,
             'preferencias' => json_decode((string)($u['preferencias'] ?? '{}'), true) ?: (object)[],

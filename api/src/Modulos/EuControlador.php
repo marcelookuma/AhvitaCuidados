@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Cuidados\Modulos;
 
+use Cuidados\Auth\Canais;
 use Cuidados\Auth\Otp;
 use Cuidados\Auth\Sessao;
 use Cuidados\Http\Resposta;
@@ -205,7 +206,11 @@ final class EuControlador extends Controlador
         $v->validar();
         ['destino' => $destino, 'tipo' => $tipo] = Otp::normalizarDestino((string)$bruto);
         $this->conferirContatoNovo($tipo, $destino);
-        return Resposta::json(Otp::solicitar($destino, $canal, $this->req->ip) + ['campo' => $tipo]);
+        if ($tipo === 'telefone' && !Canais::celular()) {
+            // Sem SMS/WhatsApp no servidor: o celular é salvo sem código, como contato não confirmado.
+            return Resposta::json(['campo' => 'telefone', 'sem_codigo' => true]);
+        }
+        return Resposta::json(Otp::solicitar($destino, $canal, $this->req->ip) + ['campo' => $tipo, 'sem_codigo' => false]);
     }
 
     /** POST /eu/contato/confirmar {destino, codigo} — trocar celular ou e-mail, passo 2. */
@@ -213,15 +218,19 @@ final class EuControlador extends Controlador
     {
         $v = Valida::de($this->corpo());
         $bruto = $v->texto('destino', true, 190);
-        $codigo = $v->texto('codigo', true, 10);
-        $v->validar();
         ['destino' => $destino, 'tipo' => $tipo] = Otp::normalizarDestino((string)$bruto);
+        $semCodigo = $tipo === 'telefone' && !Canais::celular();
+        $codigo = $v->texto('codigo', !$semCodigo, 10);
+        $v->validar();
         $this->conferirContatoNovo($tipo, $destino);
-        Otp::verificar($destino, (string)$codigo);
+        if (!$semCodigo) Otp::verificar($destino, (string)$codigo);
         $tinha = $this->u()[$tipo] !== null;
-        Bd::atualizar('usuarios', [$tipo => $destino, 'atualizado_em' => Tempo::agoraSql()], ['id' => $this->uid()]);
+        $campos = [$tipo => $destino, 'atualizado_em' => Tempo::agoraSql()];
+        if ($tipo === 'telefone') $campos['telefone_confirmado'] = $semCodigo ? 0 : 1;
+        Bd::atualizar('usuarios', $campos, ['id' => $this->uid()]);
         // Na auditoria vai só qual campo mudou, não o contato.
-        Auditoria::registrar('conta.contato_' . ($tinha ? 'trocado' : 'incluido'), 'usuario', $this->uid(), null, ['campo' => $tipo]);
+        Auditoria::registrar('conta.contato_' . ($tinha ? 'trocado' : 'incluido'), 'usuario', $this->uid(), null,
+            ['campo' => $tipo] + ($tipo === 'telefone' ? ['confirmado' => !$semCodigo] : []));
         return Resposta::json(Formata::eu(Bd::um('SELECT * FROM usuarios WHERE id = :id', ['id' => $this->uid()])));
     }
 
@@ -234,18 +243,23 @@ final class EuControlador extends Controlador
         $u = $this->u();
         $coluna = $campo === 'google' ? 'google_sub' : (string)$campo;
         if ($u[$coluna] === null) throw ErroHttp::conflito('nada_a_remover', 'Não há nada para tirar aqui.');
-        $restantes = array_filter(['telefone' => $u['telefone'], 'email' => $u['email'], 'google_sub' => $u['google_sub']], fn($x, $k) => $x !== null && $k !== $coluna, ARRAY_FILTER_USE_BOTH);
+        // Celular só informado (sem código) não serve para entrar: não conta como "outra forma".
+        $telConfirmado = (int)($u['telefone_confirmado'] ?? 1) === 1 ? $u['telefone'] : null;
+        $restantes = array_filter(['telefone' => $telConfirmado, 'email' => $u['email'], 'google_sub' => $u['google_sub']], fn($x, $k) => $x !== null && $k !== $coluna, ARRAY_FILTER_USE_BOTH);
         if ($restantes === []) {
             throw ErroHttp::conflito('ultimo_acesso', 'Esta é a única forma de entrar na sua conta. Cadastre outra antes de tirar esta.');
         }
-        Bd::exec("UPDATE usuarios SET $coluna = NULL, atualizado_em = :a WHERE id = :u", ['a' => Tempo::agoraSql(), 'u' => $u['id']]);
+        $extra = $coluna === 'telefone' ? ', telefone_confirmado = 1' : '';
+        Bd::exec("UPDATE usuarios SET $coluna = NULL$extra, atualizado_em = :a WHERE id = :u", ['a' => Tempo::agoraSql(), 'u' => $u['id']]);
         Auditoria::registrar('conta.contato_removido', 'usuario', (string)$u['id'], null, ['campo' => $campo]);
         return Resposta::json(Formata::eu(Bd::um('SELECT * FROM usuarios WHERE id = :id', ['id' => $u['id']])));
     }
 
     private function conferirContatoNovo(string $tipo, string $destino): void
     {
-        if ($this->u()[$tipo] === $destino) {
+        // O mesmo celular ainda não confirmado pode ser confirmado agora (quando o envio por celular existir).
+        $confirmando = $tipo === 'telefone' && (int)($this->u()['telefone_confirmado'] ?? 1) === 0 && Canais::celular();
+        if ($this->u()[$tipo] === $destino && !$confirmando) {
             throw ErroHttp::validacao(['destino' => 'Este já é o seu ' . ($tipo === 'email' ? 'e-mail' : 'celular')]);
         }
         if (Bd::valor("SELECT id FROM usuarios WHERE $tipo = :d AND id <> :u", ['d' => $destino, 'u' => $this->uid()]) !== null) {

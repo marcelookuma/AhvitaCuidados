@@ -18,6 +18,8 @@ export interface Usuario {
   apelido: string | null;
   cpf: string | null;
   telefone: string | null;
+  /** false = celular só informado, sem código (não serve para entrar) */
+  telefone_confirmado?: boolean;
   email: string | null;
   /** Conta vinculada ao Google ("Entrar com Google") */
   google?: boolean;
