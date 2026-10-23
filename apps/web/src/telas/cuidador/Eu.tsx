@@ -37,6 +37,10 @@ export function Eu() {
             <Interruptor rotulo="Ler em voz alta" ligado={!!pref.voz} aoMudar={(v) => { void salvar({ voz: v }); if (v) falar('Pronto. Vou ler os avisos para você.'); }} /></div>
         </div>
         <div className="cartao pilha">
+          <div className="linha-h"><span aria-hidden>🏢</span><span className="cresce"><b>Empresas</b><br /><span className="sutil">Pedidos das empresas e as redes de que você faz parte</span></span></div>
+          <button className="botao secundario largo" onClick={() => navegar('/c/empresas')}>Abrir empresas</button>
+        </div>
+        <div className="cartao pilha">
           <div className="linha-h"><span aria-hidden>🛡️</span><span className="cresce"><b>Meus registros guardados</b><br /><span className="sutil">Tudo o que você mandou fica guardado com dia e hora. Comprova os serviços que você prestou.</span></span></div>
           <a className="botao secundario largo" href={api.urlExportarEu()} download>Baixar uma cópia</a>
         </div>

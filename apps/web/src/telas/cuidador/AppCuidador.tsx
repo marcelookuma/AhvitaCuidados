@@ -4,8 +4,9 @@ import { Conversas } from './Conversas';
 import { Agenda } from './Agenda';
 import { Eu } from './Eu';
 import { Direta } from './Direta';
+import { Empresas } from './Empresas';
 
-/** App do(a) cuidador(a) — versão Conversa. Três abas: Conversas, Minha agenda, Eu. */
+/** App do(a) cuidador(a) — versão Conversa. Três abas: Conversas, Minha agenda, Eu (+ Empresas, a partir do Eu). */
 export function AppCuidador() {
   const caminho = useCaminho();
   const chat = casar('/c/p/:id', caminho);
@@ -14,6 +15,7 @@ export function AppCuidador() {
   if (direta) return <Direta conversaId={direta.id} aoVoltar={() => navegar('/c')} />;
   if (caminho === '/c/agenda') return <Agenda />;
   if (caminho === '/c/eu') return <Eu />;
+  if (caminho === '/c/empresas') return <Empresas />;
   return <Conversas />;
 }
 

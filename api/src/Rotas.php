@@ -17,6 +17,7 @@ use Cuidados\Modulos\EmpresasControlador as Empresas;
 use Cuidados\Modulos\EuControlador as Eu;
 use Cuidados\Modulos\MidiasControlador as Midias;
 use Cuidados\Modulos\PessoasControlador as Pessoas;
+use Cuidados\Modulos\RedeControlador as Rede;
 
 /** Contrato da API v1 (documentado em docs/API.md). */
 final class Rotas
@@ -99,6 +100,16 @@ final class Rotas
         $r->add('GET', '/conversas/{id}/mensagens', [Conv::class, 'mensagens']);
         $r->add('POST', '/conversas/{id}/mensagens', [Conv::class, 'enviar']);
         $r->add('POST', '/conversas/{id}/visto', [Conv::class, 'visto']);
+
+        // Rede da empresa: pedidos nos dois sentidos, com aceite do outro lado
+        $r->add('POST', '/empresas/{id}/pedidos-rede', [Rede::class, 'pedirPelaEmpresa']);
+        $r->add('GET', '/rede/empresas', [Rede::class, 'buscarEmpresas']);
+        $r->add('GET', '/eu/rede', [Rede::class, 'minhaRede']);
+        $r->add('POST', '/eu/pedidos-rede', [Rede::class, 'pedirPeloCuidador']);
+        $r->add('POST', '/eu/empresas/{id}/sair', [Rede::class, 'sair']);
+        $r->add('POST', '/pedidos-rede/{id}/aceitar', [Rede::class, 'aceitar']);
+        $r->add('POST', '/pedidos-rede/{id}/recusar', [Rede::class, 'recusar']);
+        $r->add('POST', '/pedidos-rede/{id}/cancelar', [Rede::class, 'cancelar']);
 
         // Fotos e áudios
         $r->add('POST', '/midias', [Midias::class, 'enviar']);

@@ -3,8 +3,8 @@
  * Android/iOS (token Bearer guardado no cofre do aparelho).
  */
 import type {
-  Agenda, Alerta, Atendimento, ConversaResumo, ConviteCriado, Empresa, Eu, Feed, Janela,
-  Mensagem, Painel, Pessoa, Registro, Remedio, Usuario, Vinculo,
+  Agenda, Alerta, Atendimento, ConversaResumo, ConviteCriado, Empresa, EmpresaEncontrada, Eu, Feed, Janela,
+  Mensagem, MinhaRede, Painel, PedidoRede, Pessoa, Registro, Remedio, Usuario, Vinculo,
 } from './tipos';
 
 export class ErroApi extends Error {
@@ -85,7 +85,7 @@ export function criarApi(op: OpcoesApi) {
     eu: () => get<Eu>('/eu'),
     atualizarEu: (d: Partial<Usuario> & { cpf?: string }) => patch<Usuario>('/eu', d),
     aceitarTermos: () => post<void>('/eu/termos'),
-    inicio: () => get<{ conversas: ConversaResumo[]; propostas_abertas: number }>('/eu/inicio'),
+    inicio: () => get<{ conversas: ConversaResumo[]; propostas_abertas: number; pedidos_rede: number }>('/eu/inicio'),
     excluirConta: () => post<void>('/eu/excluir', { confirmar: 'EXCLUIR' }),
     urlExportarEu: () => op.base + '/eu/exportar',
 
@@ -140,7 +140,17 @@ export function criarApi(op: OpcoesApi) {
     // Empresa
     criarEmpresa: (d: Record<string, unknown>) => post<Empresa>('/empresas', d),
     painelEmpresa: (id: string) => get<{ empresa: Empresa; equipe: number; clientes: number; propostas_abertas: number; atendimentos_7_dias: number; alertas: Alerta[] }>(`/empresas/${id}/painel`),
-    equipe: (id: string) => get<{ cuidadores: any[]; convites_pendentes: any[] }>(`/empresas/${id}/cuidadores`),
+    equipe: (id: string) => get<{ cuidadores: any[]; convites_pendentes: any[]; pedidos: { recebidos: PedidoRede[]; enviados: PedidoRede[] } }>(`/empresas/${id}/cuidadores`),
+
+    // Rede da empresa: pedidos nos dois sentidos (o outro lado aceita)
+    pedirRedeEmpresa: (empresaId: string, d: { telefone: string; modalidade: string; mensagem?: string }) =>
+      post<PedidoRede & { cuidador: { nome: string } }>(`/empresas/${empresaId}/pedidos-rede`, d),
+    minhaRede: () => get<MinhaRede>('/eu/rede'),
+    buscarEmpresas: (texto: string) => get<{ empresas: EmpresaEncontrada[] }>(`/rede/empresas${q({ q: texto })}`),
+    pedirRedeCuidador: (d: { empresa_id: string; modalidade: string; mensagem?: string }) => post<PedidoRede & { empresa: { nome: string } }>('/eu/pedidos-rede', d),
+    sairDaRede: (empresaId: string) => post<void>(`/eu/empresas/${empresaId}/sair`),
+    responderPedidoRede: (pedidoId: string, acao: 'aceitar' | 'recusar' | 'cancelar') =>
+      post<{ id: string; status: string; conversa_id: string | null }>(`/pedidos-rede/${pedidoId}/${acao}`),
     encerrarCuidadorEmpresa: (id: string, cuidadorId: string) => post<void>(`/empresas/${id}/cuidadores/${cuidadorId}/encerrar`),
     clientes: (id: string) => get<{ clientes: (Pessoa & { gestor: { nome: string; telefone: string } | null; cuidadores: { nome: string }[] })[] }>(`/empresas/${id}/clientes`),
     atendimentosEmpresa: (id: string) => get<{ atendimentos: Atendimento[] }>(`/empresas/${id}/atendimentos`),

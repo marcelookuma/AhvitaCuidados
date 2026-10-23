@@ -23,6 +23,12 @@
 - Plano de cuidado descreve necessidades da pessoa; não é lista de tarefas com horário.
 - Empresa não vê a agenda completa do(a) cuidador(a), só se está disponível quando envia a proposta.
 
+### Rede da empresa por pedido (nos dois sentidos)
+- A empresa chama quem já é cuidador(a) no app pelo **celular**; o(a) cuidador(a) procura a empresa pelo **nome ou CNPJ**. Só o aceite do outro lado coloca a pessoa na rede.
+- ⚖️ **Sem exclusividade e com saída livre**: o(a) cuidador(a) pode estar na rede de várias empresas, recusar sem consequência e **sair da rede pelo próprio app** (antes só a empresa encerrava). Uma empresa não vê as outras. Isso reforça a autonomia típica de prestação de serviço.
+- ⚖️ Vocabulário: "entrar na rede", "pedido", "aceitar". Nunca "vaga", "candidatura", "admissão" ou "contratar" para MEI/autônomo(a). O(a) cuidador(a) só se oferece como MEI ou autônomo(a); CLT só quando a empresa propõe (e aí o contrato de trabalho é fora do app).
+- LGPD: a empresa não navega pelo cadastro de cuidadores(as). Antes do aceite vê só o primeiro nome e os 4 últimos dígitos do celular; achar alguém por celular tem limite (20 não encontrados por hora) para não servir de varredura. Pedido sem resposta vence em 30 dias.
+
 ## 3. ⚖️ Itens do wireframe v5 que **não** entraram no MVP por risco — recomendo revisar antes de construir
 | Item no wireframe | Problema | Sugestão |
 |---|---|---|

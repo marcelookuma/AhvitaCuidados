@@ -111,6 +111,21 @@ Base: `https://cuidados.ahvita.com/api/index.php?r=` (funciona em qualquer servi
 | GET/POST | `/conversas/{id}/mensagens` | `{id, tipo, texto?, midia_id?, em}` | conversa direta |
 | POST | `/conversas/{id}/visto` | — | |
 
+## Rede da empresa (pedidos nos dois sentidos)
+Só o aceite do outro lado coloca o(a) cuidador(a) na rede (`empresa_cuidadores`). Um pedido pendente por empresa + cuidador(a); vence em 30 dias. Se o outro lado já tinha pedido, o segundo pedido vale como aceite. Entrar na rede não é exclusividade.
+
+| Método | Caminho | Corpo | Observação |
+|---|---|---|---|
+| POST | `/empresas/{id}/pedidos-rede` | `{telefone, modalidade: mei\|autonomo\|clt, mensagem?}` | membro da empresa; acha só quem já é cuidador(a) no app (404 sugere convite); 20 celulares não encontrados/h → 429 |
+| GET | `/empresas/{id}/cuidadores` | — | agora traz `pedidos.recebidos` e `pedidos.enviados` (antes do aceite: primeiro nome e fim do celular) |
+| GET | `/rede/empresas?q=` | — | cuidador(a); nome ou CNPJ, mínimo 3 letras, até 10 |
+| POST | `/eu/pedidos-rede` | `{empresa_id, modalidade: mei\|autonomo, mensagem?}` | cuidador(a) |
+| GET | `/eu/rede` | — | empresas em que estou, pedidos recebidos e enviados |
+| POST | `/eu/empresas/{id}/sair` | — | cuidador(a) sai quando quiser; propostas sem resposta deixam de valer |
+| POST | `/pedidos-rede/{id}/aceitar` · `/recusar` | — | quem recebeu (404 para os demais) |
+| POST | `/pedidos-rede/{id}/cancelar` | — | quem pediu |
+| GET | `/eu/inicio` | — | agora traz `pedidos_rede` (pedidos de empresas esperando resposta) |
+
 ## Mídias
 | Método | Caminho | Corpo | Observação |
 |---|---|---|---|

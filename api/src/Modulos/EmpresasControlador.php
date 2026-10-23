@@ -96,6 +96,7 @@ final class EmpresasControlador extends Controlador
                 'id' => $c['id'], 'codigo' => $c['codigo'], 'nome' => $c['destino_nome'],
                 'modalidade' => (json_decode((string)$c['dados'], true) ?: [])['modalidade'] ?? null, 'expira_em' => Tempo::sqlParaIso($c['expira_em']),
             ], $convites),
+            'pedidos' => RedeControlador::daEmpresa((string)$e['id']),
         ]);
     }
 

@@ -165,7 +165,9 @@ final class EuControlador extends Controlador
               WHERE d.cuidador_id = :u AND d.status = 'enviada' AND a.status = 'proposto' AND a.inicio > :a",
             ['u' => $uid, 'a' => $agora->format('Y-m-d H:i:s')]
         );
-        return Resposta::json(['conversas' => $conversas, 'propostas_abertas' => $propostasEmpresa]);
+        RedeControlador::expirar();
+        $pedidosRede = (int)Bd::valor("SELECT COUNT(*) FROM pedidos_rede WHERE usuario_id = :u AND origem = 'empresa' AND status = 'pendente'", ['u' => $uid]);
+        return Resposta::json(['conversas' => $conversas, 'propostas_abertas' => $propostasEmpresa, 'pedidos_rede' => $pedidosRede]);
     }
 
     /** GET /eu/exportar — portabilidade (LGPD art. 18) dos dados da própria conta */

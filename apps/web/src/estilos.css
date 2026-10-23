@@ -402,3 +402,14 @@ html[data-fonte="3"] .modo-painel { --base: 20px; }
 .aviso-sair { display: flex; flex-direction: column; gap: .25em; background: #FFF6F5; border: 1.5px solid #E9B7B1; border-radius: var(--raio-p); padding: .7em .9em; margin-bottom: .8em; color: var(--alerta); }
 .aviso-sair span { color: var(--tinta); }
 .acesso-rodape { margin-top: auto; padding-top: .8em; }
+
+/* ---------- Empresas (cuidador(a)): pedidos para entrar na rede ---------- */
+.titulo-secao { font-size: 1em; margin: .6em 0 0; color: var(--suave); }
+.destaque-pedido { border: 2px solid var(--verde); }
+.recado { margin: 0; padding: .6em .8em; background: var(--chat); border-radius: var(--raio-p); font-style: italic; }
+.campo-grande { display: flex; flex-direction: column; gap: .3em; font-weight: 700; }
+.campo-grande input { font-size: 1.1em; padding: .7em .8em; min-height: 3em; border-radius: 12px; border: 2px solid var(--linha); background: var(--papel); }
+.campo-grande input:focus { border-color: var(--verde); outline: none; }
+.conversa-linha[disabled] { opacity: .55; cursor: default; }
+.pedido-empresa { border-left: 4px solid var(--verde); }
+.lista-respostas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .35em; }
