@@ -13,14 +13,24 @@ function erro(msg) {
 }
 
 (async () => {
-  const c = new ftp.Client(30000);
-  try {
-    await c.access({
-      host: String(S).split(':')[0], port: Number(String(S).split(':')[1] || 21), user: U, password: P,
-      secure: (PROTO || 'ftps') === 'ftps', secureOptions: { rejectUnauthorized: false },
-    });
-  } catch (e) {
-    erro(`Não conectou ao FTP: ${e.message}. Confira o bloqueio de IP internacional no painel.`);
+  // O FTP da KingHost recusa algumas conexões de vez em quando ("(control socket)")
+  // e aceita segundos depois: tenta até 4 vezes, esperando 15, 30 e 60 s.
+  const espera = (s) => new Promise((ok) => setTimeout(ok, s * 1000));
+  let c;
+  for (const [i, pausa] of [0, 15, 30, 60].entries()) {
+    if (pausa) { console.log(`Tentativa ${i + 1} em ${pausa} s…`); await espera(pausa); }
+    c = new ftp.Client(30000);
+    try {
+      await c.access({
+        host: String(S).split(':')[0], port: Number(String(S).split(':')[1] || 21), user: U, password: P,
+        secure: (PROTO || 'ftps') === 'ftps', secureOptions: { rejectUnauthorized: false },
+      });
+      break;
+    } catch (e) {
+      c.close();
+      console.log(`Não conectou (tentativa ${i + 1}): ${e.message || e.code || e}`);
+      if (i === 3) erro(`Não conectou ao FTP em 4 tentativas: ${e.message}. Confira o bloqueio de IP internacional no painel.`);
+    }
   }
   let nomes = [];
   try {
