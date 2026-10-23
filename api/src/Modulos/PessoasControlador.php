@@ -135,7 +135,7 @@ final class PessoasControlador extends Controlador
         if (array_key_exists('arranjo', $d)) $campos['arranjo'] = $v->opcao('arranjo', self::ARRANJOS);
         if (array_key_exists('ficha', $d)) $campos['ficha'] = self::fichaLimpa($v->objeto('ficha', true) ?? []);
         if (array_key_exists('empresa_permissoes', $d)) {
-            $campos['empresa_permissoes'] = Permissoes::limpar($d['empresa_permissoes'], 'empresa');
+            $campos['empresa_permissoes'] = ClientesControlador::limpar($d['empresa_permissoes']);
         }
         if (array_key_exists('plano', $d)) {
             Acesso::exigir($ctx, 'plano_editar');
@@ -185,7 +185,8 @@ final class PessoasControlador extends Controlador
                 // Empresa sem acesso aos registros vê só alertas de organização (cobertura), não de saúde.
                 $saida['alertas'] = array_values(array_filter($saida['alertas'], fn($a) => in_array($a['tipo'], ['sem_confirmacao', 'nao_vou', 'proposta_recusada'], true)));
             }
-            $saida['em_servico'] = array_map(fn($p) => [
+            // ⚖️ Empresa não vê presença (quem está em serviço e desde quando).
+            $saida['em_servico'] = $ctx['papel'] === 'empresa' ? [] : array_map(fn($p) => [
                 'presenca_id' => $p['id'],
                 'cuidador' => Formata::pessoaPublica($p['cuidador_id']),
                 'desde' => Tempo::sqlParaIso($p['inicio_em']),
@@ -281,8 +282,15 @@ final class PessoasControlador extends Controlador
     {
         $ctx = Acesso::pessoa($this->u(), $this->req->param('id'));
         Acesso::exigir($ctx, 'administrar');
+        $empresaId = $ctx['pessoa']['empresa_id'];
         Bd::atualizar('pessoas_cuidadas', ['empresa_id' => null, 'empresa_permissoes' => null, 'atualizado_em' => Tempo::agoraSql()], ['id' => $ctx['pessoa']['id']]);
-        Auditoria::registrar('empresa.desvinculada', 'pessoa', $ctx['pessoa']['id'], $ctx['pessoa']['id']);
+        Bd::exec("UPDATE consentimentos SET revogado_em = :a WHERE pessoa_id = :p AND tipo = 'compartilhar_empresa' AND revogado_em IS NULL",
+            ['a' => Tempo::agoraSql(), 'p' => $ctx['pessoa']['id']]);
+        if ($empresaId !== null) {
+            $e = Bd::um('SELECT nome_fantasia, razao_social FROM empresas WHERE id = :id', ['id' => $empresaId]);
+            if ($e !== null) Conversas::sistema(Conversas::daPessoa((string)$ctx['pessoa']['id']), '🏢 A empresa ' . ($e['nome_fantasia'] ?: $e['razao_social']) . ' deixou de acompanhar o cuidado.');
+        }
+        Auditoria::registrar('empresa.desvinculada', 'pessoa', $ctx['pessoa']['id'], $ctx['pessoa']['id'], ['empresa' => $empresaId]);
         return Resposta::vazio();
     }
 

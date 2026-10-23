@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MODALIDADES, dia, hora, isoLocal, periodo, reais, telefone, type ConviteCriado, type PedidoRede } from '@cuidados/core';
+import { MODALIDADES, dia, hora, isoLocal, periodo, reais, telefone, type ConviteCriado, type PedidoCliente, type PedidoRede } from '@cuidados/core';
 import { api } from '../../servicos';
 import { busca, casar, navegar, useCaminho } from '../../rota';
 import { useSessao } from '../../sessao';
@@ -7,6 +7,8 @@ import { BotaoSair } from '../../componentes/sair';
 import { useCarregar, useRepetir } from '../../hooks';
 import { Campo, Carregando, ErroGeral, Vazio, useAcao, useLanche } from '../../componentes/ui';
 import { Direta } from '../cuidador/Direta';
+import { LinhaDoTempo } from '../acompanhamento/LinhaDoTempo';
+import { EscolherPermissoesEmpresa, nomes } from '../acompanhamento/LigarEmpresa';
 
 const ABAS = [
   { k: 'painel', e: '🏠', t: 'Painel' },
@@ -23,7 +25,7 @@ const ABAS = [
 export function AppEmpresa() {
   const caminho = useCaminho();
   const { eu } = useSessao();
-  const m = casar('/e/:id/:aba', caminho) ?? casar('/e/:id', caminho);
+  const m = casar('/e/:id/:aba/:sub', caminho) ?? casar('/e/:id/:aba', caminho) ?? casar('/e/:id', caminho);
   const id = m?.id ?? '';
   const painel = useCarregar(() => api.painelEmpresa(id), [id]);
   useRepetir(() => void painel.recarregar(true), 30000);
@@ -53,7 +55,7 @@ export function AppEmpresa() {
           {aba.k === 'painel' && <Painel id={id} d={painel.dados} aoMudar={() => void painel.recarregar(true)} />}
           {aba.k === 'atendimentos' && <Atendimentos id={id} />}
           {aba.k === 'equipe' && <Equipe id={id} admin={e.meu_papel === 'admin'} />}
-          {aba.k === 'clientes' && <Clientes id={id} />}
+          {aba.k === 'clientes' && <Clientes id={id} aberto={m?.sub} />}
           {aba.k === 'conversas' && <Conversas id={id} />}
         </main>
       </div>
@@ -294,41 +296,132 @@ function Equipe({ id, admin }: { id: string; admin: boolean }) {
   );
 }
 
-function Clientes({ id }: { id: string }) {
+function Clientes({ id, aberto }: { id: string; aberto?: string }) {
+  const lanche = useLanche();
   const r = useCarregar(() => api.clientes(id), [id]);
   const [convite, setConvite] = useState<ConviteCriado | null>(null);
+  const [modo, setModo] = useState<'nada' | 'pedir' | 'convidar'>('nada');
   const [nome, setNome] = useState('');
   const [tel, setTel] = useState('');
+  const [pedido, setPedido] = useState({ contato: '', mensagem: '', permissoes: ['atendimentos', 'ver_registros'] });
   const criar = useAcao(async () => { setConvite(await api.convidarEmpresa(id, { tipo: 'cliente', nome, telefone: tel || undefined })); });
+  const pedir = useAcao(async () => {
+    const res = await api.pedirCliente(id, { contato: pedido.contato, permissoes: pedido.permissoes, mensagem: pedido.mensagem || undefined });
+    lanche(res.status === 'aceito' ? `${res.gestor.nome} já tinha pedido: o cliente foi ligado.` : `Pedido enviado para ${res.gestor.nome}. Ele(a) decide no app.`);
+    setModo('nada');
+    setPedido({ contato: '', mensagem: '', permissoes: ['atendimentos', 'ver_registros'] });
+    await r.recarregar(true);
+  });
+  const responder = useAcao(async (p: PedidoCliente, acao: 'aceitar' | 'recusar' | 'cancelar') => {
+    await api.responderPedidoCliente(p.id, acao);
+    lanche(acao === 'aceitar' ? `${p.pessoa?.apelido} agora é cliente.` : acao === 'recusar' ? 'Pedido recusado.' : 'Pedido desfeito.');
+    await r.recarregar(true);
+  });
   if (!r.dados) return <Carregando />;
+  const cliente = aberto ? r.dados.clientes.find((c) => c.id === aberto) : undefined;
+  if (aberto) {
+    if (!cliente) return <><button className="botao fantasma pequeno" onClick={() => navegar(`/e/${id}/clientes`)}>← Clientes</button><Vazio e="🔒">Este cliente não está mais ligado à empresa.</Vazio></>;
+    const veLinha = cliente.permissoes.includes('ver_registros');
+    return (
+      <>
+        <div className="linha-h" style={{ flexWrap: 'wrap' }}>
+          <button className="botao fantasma pequeno" onClick={() => navegar(`/e/${id}/clientes`)}>← Clientes</button>
+          <span className="cresce" />
+          <span className="sutil">Gestor(a): {cliente.gestor?.nome ?? '—'}</span>
+        </div>
+        <p className="aviso-empresa">A empresa vê: <b>{nomes(cliente.permissoes)}</b>. Quem decide é o(a) gestor(a). Os registros são do cuidado de {cliente.apelido}: não servem para controlar horário ou tarefas de cuidadores(as) MEI ou autônomos(as).</p>
+        {veLinha ? <LinhaDoTempo pessoa={cliente} /> : <Vazio e="🔒">O(a) gestor(a) não liberou a linha do tempo de {cliente.apelido}. Ele(a) pode liberar em “Quem cuida”.</Vazio>}
+      </>
+    );
+  }
+  const recebidos = r.dados.pedidos?.recebidos ?? [];
+  const enviados = r.dados.pedidos?.enviados ?? [];
+  const pendentes = enviados.filter((p) => p.status === 'pendente');
+  const respostas = enviados.filter((p) => p.status !== 'pendente');
   return (
     <>
-      <h1>Clientes</h1>
-      <form className="cartao pilha" onSubmit={(e) => { e.preventDefault(); void criar.executar(); }}>
-        <h3 style={{ margin: 0 }}>Convidar o(a) gestor(a) de um cliente</h3>
-        <p className="sutil" style={{ margin: 0 }}>Quem organiza o cuidado (gestor(a)) aceita o convite, escolhe a pessoa e decide o que a empresa pode ver.</p>
-        <div className="grade-2">
-          <Campo rotulo="Nome do(a) gestor(a)"><input value={nome} onChange={(e) => setNome(e.target.value)} required /></Campo>
-          <Campo rotulo="Celular (WhatsApp)"><input value={tel} onChange={(e) => setTel(e.target.value)} inputMode="tel" /></Campo>
-        </div>
-        <ErroGeral erro={criar.erro} />
-        {convite ? (
-          <div className="linha-h" style={{ flexWrap: 'wrap' }}><span className="cresce">Código <b>{convite.codigo}</b></span>
-            <a className="botao" href={convite.whatsapp} target="_blank" rel="noreferrer">💬 Enviar pelo WhatsApp</a></div>
-        ) : <button className="botao" style={{ alignSelf: 'flex-start' }} disabled={criar.enviando}>Gerar convite</button>}
-      </form>
-      {r.dados.clientes.length === 0 ? <Vazio e="🏡">Nenhum cliente ainda.</Vazio> : (
+      <div className="linha-h" style={{ flexWrap: 'wrap' }}><h1 className="cresce">Clientes</h1>
+        <button className="botao" onClick={() => { setConvite(null); setModo('pedir'); }}>🔎 Pedir para acompanhar um cliente</button>
+        <button className="botao secundario" onClick={() => { setConvite(null); setModo('convidar'); }}>Convidar o(a) gestor(a)</button>
+      </div>
+
+      {recebidos.length > 0 && (
+        <section className="pilha">
+          <h2>Pedidos de gestores(as)</h2>
+          {recebidos.map((p) => (
+            <div key={p.id} className="alerta-linha pedido-empresa">
+              <span className="cresce"><b>{p.gestor?.nome}</b> quer que a empresa acompanhe <b>{p.pessoa?.apelido}</b><br />
+                <span className="sutil">Libera: {nomes(p.permissoes)}</span>
+                {p.mensagem && <><br /><span className="sutil">“{p.mensagem}”</span></>}</span>
+              <button className="botao pequeno" disabled={responder.enviando} onClick={() => void responder.executar(p, 'aceitar')}>Aceitar</button>
+              <button className="botao secundario pequeno" disabled={responder.enviando} onClick={() => void responder.executar(p, 'recusar')}>Recusar</button>
+            </div>
+          ))}
+          <ErroGeral erro={responder.erro} />
+        </section>
+      )}
+
+      {modo === 'pedir' && (
+        <form className="cartao pilha" onSubmit={(e) => { e.preventDefault(); void pedir.executar(); }}>
+          <h3 style={{ margin: 0 }}>Pedir para acompanhar o cuidado de um cliente</h3>
+          <p className="sutil" style={{ margin: 0 }}>Para quem já usa o app como gestor(a). Ele(a) recebe o pedido, escolhe a pessoa e decide o que a empresa vê, que pode ser menos do que você pedir.</p>
+          <Campo rotulo="Celular ou e-mail do(a) gestor(a)"><input value={pedido.contato} onChange={(e) => setPedido({ ...pedido, contato: e.target.value })} required /></Campo>
+          <p style={{ margin: 0 }}><b>O que a empresa gostaria de ver</b></p>
+          <EscolherPermissoesEmpresa valor={pedido.permissoes} aoMudar={(p) => setPedido({ ...pedido, permissoes: p })} />
+          <Campo rotulo="Recado (opcional)"><input value={pedido.mensagem} onChange={(e) => setPedido({ ...pedido, mensagem: e.target.value })} maxLength={200} /></Campo>
+          <ErroGeral erro={pedir.erro} />
+          <div className="linha-h"><button className="botao" disabled={pedir.enviando}>Enviar pedido</button><button type="button" className="botao fantasma" onClick={() => setModo('nada')}>Cancelar</button></div>
+        </form>
+      )}
+
+      {modo === 'convidar' && (
+        <form className="cartao pilha" onSubmit={(e) => { e.preventDefault(); void criar.executar(); }}>
+          <h3 style={{ margin: 0 }}>Convidar o(a) gestor(a) de um cliente</h3>
+          <p className="sutil" style={{ margin: 0 }}>Para quem ainda não usa o app. Quem organiza o cuidado (gestor(a)) aceita o convite, escolhe a pessoa e decide o que a empresa pode ver.</p>
+          <div className="grade-2">
+            <Campo rotulo="Nome do(a) gestor(a)"><input value={nome} onChange={(e) => setNome(e.target.value)} required /></Campo>
+            <Campo rotulo="Celular (WhatsApp)"><input value={tel} onChange={(e) => setTel(e.target.value)} inputMode="tel" /></Campo>
+          </div>
+          <ErroGeral erro={criar.erro} />
+          {convite ? (
+            <div className="linha-h" style={{ flexWrap: 'wrap' }}><span className="cresce">Código <b>{convite.codigo}</b></span>
+              <a className="botao" href={convite.whatsapp} target="_blank" rel="noreferrer">💬 Enviar pelo WhatsApp</a></div>
+          ) : <button className="botao" style={{ alignSelf: 'flex-start' }} disabled={criar.enviando}>Gerar convite</button>}
+        </form>
+      )}
+
+      {r.dados.clientes.length === 0 && pendentes.length === 0 ? <Vazio e="🏡">Nenhum cliente ainda.</Vazio> : (
         <table className="tabela responsiva">
-          <thead><tr><th>Pessoa</th><th>Gestor(a)</th><th>Cuidadores(as)</th><th>A empresa pode</th></tr></thead>
-          <tbody>{r.dados.clientes.map((c) => (
-            <tr key={c.id}>
-              <td><b>{c.apelido}</b><br /><span className="sutil">{c.idade} anos</span></td>
-              <td>{c.gestor?.nome}<br /><span className="sutil">{telefone(c.gestor?.telefone)}</span></td>
-              <td>{c.cuidadores.map((x) => x.nome).join(', ') || '—'}</td>
-              <td className="sutil">{c.permissoes.map((p) => ({ atendimentos: 'organizar atendimentos', plano_ver: 'ver o plano', ver_registros: 'ver registros', mensagens: 'conversar', ficha_emergencia: 'ver ficha' } as Record<string, string>)[p] ?? p).join(', ')}</td>
-            </tr>
-          ))}</tbody>
+          <thead><tr><th>Pessoa</th><th>Gestor(a)</th><th>Cuidadores(as)</th><th>A empresa vê</th><th /></tr></thead>
+          <tbody>
+            {r.dados.clientes.map((c) => (
+              <tr key={c.id}>
+                <td><b>{c.apelido}</b><br /><span className="sutil">{c.idade} anos</span></td>
+                <td>{c.gestor?.nome}<br /><span className="sutil">{telefone(c.gestor?.telefone)}</span></td>
+                <td>{c.cuidadores.map((x) => x.nome).join(', ') || '—'}</td>
+                <td className="sutil">{nomes(c.permissoes)}</td>
+                <td>{c.permissoes.includes('ver_registros') && <button className="botao fantasma pequeno" onClick={() => navegar(`/e/${id}/clientes/${c.id}`)}>🕑 Linha do tempo</button>}</td>
+              </tr>
+            ))}
+            {pendentes.map((p) => (
+              <tr key={p.id}>
+                <td className="sutil">—</td>
+                <td>{p.gestor?.nome}</td>
+                <td />
+                <td><span className="etiqueta atencao">Pedido enviado, esperando o(a) gestor(a)</span></td>
+                <td><button className="botao fantasma pequeno" disabled={responder.enviando} onClick={() => void responder.executar(p, 'cancelar')}>Desfazer pedido</button></td>
+              </tr>
+            ))}
+          </tbody>
         </table>
+      )}
+      {respostas.length > 0 && (
+        <section className="pilha">
+          <h3 style={{ margin: 0 }}>Respostas dos últimos 30 dias</h3>
+          <ul className="lista-respostas">
+            {respostas.map((p) => <li key={p.id}><span className={`etiqueta ${p.status === 'aceito' ? 'ok' : ''}`}>{{ aceito: 'Aceitou', recusado: 'Não aceitou', cancelado: 'Pedido desfeito', expirado: 'Venceu sem resposta' }[p.status as string] ?? p.status}</span> {p.gestor?.nome}{p.pessoa ? ` · ${p.pessoa.apelido}` : ''}</li>)}
+          </ul>
+        </section>
       )}
     </>
   );

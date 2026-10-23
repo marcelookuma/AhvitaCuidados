@@ -4,7 +4,7 @@
  */
 import type {
   Agenda, Alerta, Atendimento, ConversaResumo, ConviteCriado, Empresa, EmpresaEncontrada, Eu, Feed, Janela,
-  Mensagem, MinhaRede, Painel, PedidoRede, Pessoa, Registro, Remedio, Usuario, Vinculo,
+  Mensagem, MinhaRede, Painel, PedidoCliente, PedidoRede, Pessoa, Registro, Remedio, Usuario, Vinculo,
 } from './tipos';
 
 export class ErroApi extends Error {
@@ -156,7 +156,18 @@ export function criarApi(op: OpcoesApi) {
     responderPedidoRede: (pedidoId: string, acao: 'aceitar' | 'recusar' | 'cancelar') =>
       post<{ id: string; status: string; conversa_id: string | null }>(`/pedidos-rede/${pedidoId}/${acao}`),
     encerrarCuidadorEmpresa: (id: string, cuidadorId: string) => post<void>(`/empresas/${id}/cuidadores/${cuidadorId}/encerrar`),
-    clientes: (id: string) => get<{ clientes: (Pessoa & { gestor: { nome: string; telefone: string } | null; cuidadores: { nome: string }[] })[] }>(`/empresas/${id}/clientes`),
+    clientes: (id: string) => get<{ clientes: (Pessoa & { gestor: { nome: string; telefone: string } | null; cuidadores: { nome: string }[] })[]; pedidos: { recebidos: PedidoCliente[]; enviados: PedidoCliente[] } }>(`/empresas/${id}/clientes`),
+
+    // Empresa ↔ pessoa cuidada: pedidos nos dois sentidos; o(a) gestor(a) decide o que a empresa vê
+    buscarEmpresasParaPessoa: (pessoaId: string, texto: string) =>
+      get<{ empresas: { id: string; nome: string; razao_social: string; cnpj: string; pedido_pendente: boolean }[] }>(`/pessoas/${pessoaId}/empresas/buscar${q({ q: texto })}`),
+    pedirEmpresa: (pessoaId: string, d: { empresa_id: string; permissoes: string[]; mensagem?: string }) =>
+      post<PedidoCliente & { empresa: { nome: string } }>(`/pessoas/${pessoaId}/pedidos-empresa`, d),
+    meusPedidosEmpresa: () => get<{ recebidos: PedidoCliente[]; enviados: PedidoCliente[] }>('/eu/pedidos-empresa'),
+    pedirCliente: (empresaId: string, d: { contato: string; permissoes: string[]; mensagem?: string }) =>
+      post<PedidoCliente & { gestor: { nome: string } }>(`/empresas/${empresaId}/pedidos-cliente`, d),
+    responderPedidoCliente: (pedidoId: string, acao: 'aceitar' | 'recusar' | 'cancelar', d: { pessoa_id?: string; permissoes?: string[] } = {}) =>
+      post<{ id: string; status: string; pessoa_id: string | null; permissoes: string[] | null }>(`/pedidos-cliente/${pedidoId}/${acao}`, d),
     atendimentosEmpresa: (id: string) => get<{ atendimentos: Atendimento[] }>(`/empresas/${id}/atendimentos`),
     criarProposta: (id: string, d: Record<string, unknown>) => post<{ atendimento: Atendimento; enviada_para: number }>(`/empresas/${id}/propostas`, d),
     conversasEmpresa: (id: string) => get<{ conversas: { conversa_id: string; com: { nome: string }; ultimo: Mensagem | null; nao_lidas: number }[] }>(`/empresas/${id}/conversas`),

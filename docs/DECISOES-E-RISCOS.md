@@ -23,6 +23,12 @@
 - Plano de cuidado descreve necessidades da pessoa; não é lista de tarefas com horário.
 - Empresa não vê a agenda completa do(a) cuidador(a), só se está disponível quando envia a proposta.
 
+### Empresa acompanhando a pessoa cuidada (pedido nos dois sentidos)
+- O(a) gestor(a) procura a empresa e pede, ou a empresa pede ao(à) gestor(a) pelo celular ou e-mail. **Quem decide o que a empresa vê é sempre o(a) gestor(a)**, item por item (atendimentos, linha do tempo, plano, remédios, fotos, conversa, ficha), e pode liberar menos do que a empresa pediu, mudar depois ou encerrar.
+- LGPD: o aceite grava o consentimento `compartilhar_empresa` (revogado ao encerrar) e avisa todos na conversa da pessoa, inclusive cuidadores(as). Antes do aceite a empresa vê só o apelido da pessoa. A empresa nunca registra, edita nem administra.
+- ⚖️ **A empresa nunca vê presença**: sem início/fim de serviço na linha do tempo, sem "em serviço desde" no painel, sem os avisos automáticos de início/fim na conversa. Horário de entrada e saída de cuidador(a) MEI/autônomo(a) na mão da empresa é prova típica de controle de jornada. A linha do tempo da empresa mostra só o cuidado da pessoa, com o aviso de que não serve para controlar tarefas ou horários.
+- Risco que fica: mesmo sem presença, os registros têm autor e horário. Se a empresa usar isso para cobrar o(a) cuidador(a) MEI, o risco volta. Recomendo cláusula no contrato empresa ↔ cuidador(a) e validação jurídica antes de liberar "ver a linha do tempo" por padrão.
+
 ### Rede da empresa por pedido (nos dois sentidos)
 - A empresa chama quem já é cuidador(a) no app pelo **celular**; o(a) cuidador(a) procura a empresa pelo **nome ou CNPJ**. Só o aceite do outro lado coloca a pessoa na rede.
 - ⚖️ **Sem exclusividade e com saída livre**: o(a) cuidador(a) pode estar na rede de várias empresas, recusar sem consequência e **sair da rede pelo próprio app** (antes só a empresa encerrava). Uma empresa não vê as outras. Isso reforça a autonomia típica de prestação de serviço.

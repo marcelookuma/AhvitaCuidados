@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { EscolherPermissoesEmpresa, LigarEmpresa } from './LigarEmpresa';
 import { FUNCOES, MODALIDADES, PAPEIS, telefone, type ConviteCriado, type Pessoa, type Vinculo } from '@cuidados/core';
 import { api } from '../../servicos';
 import { useSessao } from '../../sessao';
@@ -62,10 +63,12 @@ export function Equipe({ pessoa }: { pessoa: Pessoa }) {
         </section>
       )}
 
+      {!v.dados.empresa && admin && <LigarEmpresa pessoa={pessoa} aoLigar={() => void v.recarregar(true)} />}
+
       {v.dados.empresa && (
         <section className="cartao pilha">
           <h3 style={{ margin: 0 }}>🏢 Empresa: {v.dados.empresa.nome}</h3>
-          <p className="sutil" style={{ margin: 0 }}>A empresa organiza atendimentos. Ela só vê o que você marcar.</p>
+          <p className="sutil" style={{ margin: 0 }}>A empresa só vê o que você marcar. Ela nunca vê o horário de entrada e saída de cada cuidador(a).</p>
           {admin && <PermissoesEmpresa pessoa={pessoa} atuais={v.dados.empresa.permissoes} aoSalvar={() => { lanche('Salvo'); void v.recarregar(true); }} />}
           {admin && <button className="botao fantasma pequeno" style={{ alignSelf: 'flex-start', color: 'var(--alerta)' }} onClick={async () => {
             if (!confirm(`Encerrar a relação com ${v.dados!.empresa!.nome}?`)) return;
@@ -124,15 +127,8 @@ function PermissoesEmpresa({ pessoa, atuais, aoSalvar }: { pessoa: Pessoa; atuai
   const [perm, setPerm] = useState(atuais);
   return (
     <>
-      <div className="permissoes">
-        {FUNCOES.filter((f) => ['atendimentos', 'plano_ver', 'ver_registros', 'mensagens', 'ficha_emergencia'].includes(f.chave)).map((f) => (
-          <label key={f.chave} className="permissao">
-            <input type="checkbox" checked={perm.includes(f.chave)} onChange={(e) => setPerm(e.target.checked ? [...perm, f.chave] : perm.filter((x) => x !== f.chave))} />
-            <span><b>{f.nome}</b><small>{f.desc}</small></span>
-          </label>
-        ))}
-      </div>
-      <button className="botao pequeno" style={{ alignSelf: 'flex-start' }} onClick={async () => { await api.atualizarPessoa(pessoa.id, { empresa_permissoes: perm }); aoSalvar(); }}>Salvar permissões da empresa</button>
+      <EscolherPermissoesEmpresa valor={perm} aoMudar={setPerm} />
+      <button className="botao pequeno" style={{ alignSelf: 'flex-start' }} onClick={async () => { await api.atualizarPessoa(pessoa.id, { empresa_permissoes: perm }); aoSalvar(); }}>Salvar o que a empresa vê</button>
     </>
   );
 }

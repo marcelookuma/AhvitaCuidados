@@ -245,3 +245,19 @@ export interface MinhaRede {
 }
 
 export interface EmpresaEncontrada { id: string; nome: string; razao_social: string; cnpj: string; na_rede: boolean; pedido_pendente: boolean }
+
+/** Pedido de vínculo empresa ↔ pessoa cuidada (o(a) gestor(a) pede ou a empresa pede; o outro lado aceita). */
+export interface PedidoCliente {
+  id: string;
+  origem: 'gestor' | 'empresa';
+  status: 'pendente' | 'aceito' | 'recusado' | 'cancelado' | 'expirado';
+  mensagem: string | null;
+  /** Origem gestor: o que libera. Origem empresa: o que a empresa gostaria de ver. */
+  permissoes: string[];
+  criado_em: string;
+  expira_em: string;
+  respondido_em: string | null;
+  empresa?: { id: string; nome: string };
+  gestor?: { id: string; nome: string };
+  pessoa?: { id: string; apelido: string } | null;
+}

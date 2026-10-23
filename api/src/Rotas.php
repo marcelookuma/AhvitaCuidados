@@ -9,6 +9,7 @@ use Cuidados\Modulos\Admin\CadastrosAdmin as Cad;
 use Cuidados\Modulos\Admin\LogsAdmin;
 use Cuidados\Modulos\Admin\VisaoAdmin;
 use Cuidados\Modulos\AgendaControlador as Agenda;
+use Cuidados\Modulos\ClientesControlador as Clientes;
 use Cuidados\Modulos\AuthControlador as Auth;
 use Cuidados\Modulos\ConversasControlador as Conv;
 use Cuidados\Modulos\ConvitesControlador as Convites;
@@ -103,6 +104,15 @@ final class Rotas
         $r->add('GET', '/conversas/{id}/mensagens', [Conv::class, 'mensagens']);
         $r->add('POST', '/conversas/{id}/mensagens', [Conv::class, 'enviar']);
         $r->add('POST', '/conversas/{id}/visto', [Conv::class, 'visto']);
+
+        // Empresa ↔ pessoa cuidada: pedidos nos dois sentidos; o(a) gestor(a) decide o que a empresa vê
+        $r->add('GET', '/pessoas/{id}/empresas/buscar', [Clientes::class, 'buscarEmpresas']);
+        $r->add('POST', '/pessoas/{id}/pedidos-empresa', [Clientes::class, 'pedirPeloGestor']);
+        $r->add('GET', '/eu/pedidos-empresa', [Clientes::class, 'meusPedidos']);
+        $r->add('POST', '/empresas/{id}/pedidos-cliente', [Clientes::class, 'pedirPelaEmpresa']);
+        $r->add('POST', '/pedidos-cliente/{id}/aceitar', [Clientes::class, 'aceitar']);
+        $r->add('POST', '/pedidos-cliente/{id}/recusar', [Clientes::class, 'recusar']);
+        $r->add('POST', '/pedidos-cliente/{id}/cancelar', [Clientes::class, 'cancelar']);
 
         // Rede da empresa: pedidos nos dois sentidos, com aceite do outro lado
         $r->add('POST', '/empresas/{id}/pedidos-rede', [Rede::class, 'pedirPelaEmpresa']);
